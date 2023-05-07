@@ -61,7 +61,7 @@ enum TokenType {
 	COLD, /* constant */
 	BANG, /* ! */
 
-	TOKEN_EOF
+	TOKEN_EOF, TOKEN_ERROR,
 };
 
 class Token {

@@ -27,12 +27,13 @@ Token Scanner::ScanToken() {
 
 	switch (c) {
 		case '\0':	return Token(TOKEN_EOF, "");
+
 		case 'a': if (CheckWord("nd"))	return Token(AND, "and");	break;
 		case 'b': if (CheckWord("ool")) return Token(BOOL, "bool"); break;
 		case 'c': if (CheckWord("old")) return Token(COLD, "cold"); break;
 
 		case 'e': {
-			if (CheckWord("nd")) {
+			if (MatchString("nd")) {
 				if (CheckWord("for"))		return Token(ENDFOR, "endfor");
 				if (CheckWord("while"))		return Token(ENDWHILE, "endwhile");
 				if (CheckWord("if"))		return Token(ENDIF, "endif");
@@ -188,7 +189,9 @@ Token Scanner::ScanToken() {
 		return Number();
 	}
 	else {
-		error("Unidentified character");
+		std::string msg = "Unidentified character";
+		error(msg);
+		return Token(TOKEN_ERROR, msg);
 	}
 
 }
@@ -216,8 +219,10 @@ Token Scanner::Number() {
 }
 
 Token Scanner::String() {
+	advance(); // get rid of opening ""
 	while (peek(0) != '"') { advance(); }
-	return Token(STRING_LITERAL, src.substr(start, current - start));
+	advance(); // get rid of closing ""
+	return Token(STRING_LITERAL, src.substr(start + 1, current - start - 2));
 }
 
 Token Scanner::Identifier() {
@@ -244,8 +249,17 @@ char Scanner::advance() {
 	return src[current++];
 }
 
-char Scanner::peek(int level) {
-	return src[current + level];
+char Scanner::peek(int distance) {
+	return src[current + distance];
+}
+
+bool Scanner::MatchString(std::string target) {
+	if (src.substr(current, target.length()) == target) {
+		for (int i = 0; i < target.length(); i++) advance();
+		return true;
+	}
+
+	return false;
 }
 
 bool Scanner::match(char c) {
@@ -256,9 +270,10 @@ bool Scanner::match(char c) {
 	return false;
 }
 
+
 void Scanner::error(std::string ErrorMsg) {
 	int line = CountLines();
-	std::cerr << "[Error in line " << line << "]" << ErrorMsg << std::endl;
+	std::cerr << "[Error in line " << line << "]: " << ErrorMsg << std::endl;
 }
 
 int Scanner::CountLines() {

@@ -26,7 +26,8 @@ private:
 
 	char advance();
 	bool match(char c);
-	char peek(int level);
+	char peek(int distance);
+	bool MatchString(std::string target);
 
 	char GetCurrentChar();
 

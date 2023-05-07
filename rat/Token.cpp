@@ -16,6 +16,8 @@ std::string Token::ToString() {
 		return  "{ Float literal, \tvalue = " + lexeme + " }";
 	case TOKEN_EOF:
 		return " { EOF token}";
+	case TOKEN_ERROR:
+		return " { Error token, \tmsg = \"" + lexeme + "\" }";
 	case IDENTIFIER:
 		return " { Identifier,\tvalue = " + lexeme + " }";
 	default:
