@@ -3,6 +3,8 @@
 #include <string>
 
 #include "rat.h"
+#include "scanner.h"
+#include "Token.h"
 
 int main(int argc, char *argv[])
 {
@@ -37,14 +39,21 @@ void RunScript(std::string filename) {
 
 void RunPrompt() {
     std::string buffer;
+
     while (true) {
-        std::cout << ">>";
+        std::cout << ">> ";
         std::getline(std::cin, buffer);
         Run(buffer);  // the function's return code doesn't matter when running a prompt
     }
 }
 
 int Run(std::string line) {
-    if(!line.empty()) std::cout << line <<std::endl;
+    Scanner scanner = Scanner(line);
+    std::vector<Token>  tokens = scanner.ScanTokens();
+
+    for (Token token : tokens) { 
+        std::cout << token.ToString() << "\n";
+    }
+
     return 0;
 }
