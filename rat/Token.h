@@ -14,7 +14,8 @@ enum TokenType {
 	LEFT_BRACKET, RIGHT_BRACKET,
 	LEFT_BRACE, RIGHT_BRACE,
 
-	HASH, // for comments #
+	HASH,
+	COLON,
 
 	// loops and conditions
 	IF, ELSE, WHILE, FOR, IN, REPEAT,

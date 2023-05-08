@@ -10,7 +10,7 @@ Scanner::Scanner(std::string src) {
 }
 
 std::vector<Token> Scanner::ScanTokens() {
-	Token token = Token(TOKEN_EOF, "");
+	Token token = Token(TOKEN_EOF, ""); // placeholder value
 	do { 
 		token = ScanToken();
 		tokens.push_back(token);
@@ -180,6 +180,8 @@ Token Scanner::ScanToken() {
 		}
 
 		case '"': return String();
+		case '#': return Comment();
+		case ':': return Token(COLON, ":");
 	}
 
 	if (isalpha(c) || c == '_') {
@@ -219,8 +221,11 @@ Token Scanner::Number() {
 }
 
 Token Scanner::String() {
-	advance(); // get rid of opening ""
-	while (peek(0) != '"') { advance(); }
+	while (peek(0) != '"' && !IsAtEnd()) { advance(); }
+	if (IsAtEnd()) {
+		error("Unclosed string");
+		return Token(TOKEN_EOF, "");
+	}
 	advance(); // get rid of closing ""
 	return Token(STRING_LITERAL, src.substr(start + 1, current - start - 2));
 }
@@ -228,6 +233,14 @@ Token Scanner::String() {
 Token Scanner::Identifier() {
 	while (isalnum(peek(0)) || peek(0) == '_') { advance(); }
 	return Token(IDENTIFIER, src.substr(start, current - start));
+}
+
+Token Scanner::Comment() {
+	while (!(match('\n') || IsAtEnd())) advance();
+	if (IsAtEnd()) {
+		return Token(TOKEN_EOF, "");
+	}
+	return Token(HASH, ""); // compiler will discard
 }
 
 void Scanner::SkipWhiteSpace() {
@@ -270,10 +283,13 @@ bool Scanner::match(char c) {
 	return false;
 }
 
+bool Scanner::IsAtEnd() {
+	return current >= src.length();
+}
 
 void Scanner::error(std::string ErrorMsg) {
 	int line = CountLines();
-	std::cerr << "[Error in line " << line << "]: " << ErrorMsg << std::endl;
+	std::cerr << "[Error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
 }
 
 int Scanner::CountLines() {

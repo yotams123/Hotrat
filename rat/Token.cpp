@@ -9,11 +9,11 @@ std::string Token::ToString() {
 	switch (this->type)
 	{
 	case STRING_LITERAL:
-		return "{ String literal,\tvalue = \"" + lexeme + "\"}";
+		return " { String literal,\tvalue = \"" + lexeme + "\"}";
 	case INT_LITERAL:
-		return  "{ Int literal, \tvalue = " + lexeme + " }";
+		return " { Int literal, \tvalue = " + lexeme + " }";
 	case FLOAT_LITERAL:
-		return  "{ Float literal, \tvalue = " + lexeme + " }";
+		return " { Float literal, \tvalue = " + lexeme + " }";
 	case TOKEN_EOF:
 		return " { EOF token}";
 	case TOKEN_ERROR:

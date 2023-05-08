@@ -29,16 +29,15 @@ private:
 	char peek(int distance);
 	bool MatchString(std::string target);
 
-	char GetCurrentChar();
+	bool IsAtEnd();
 
 	void SkipWhiteSpace();
 	bool CheckWord(std::string word);
 
 	Token String();
-
 	Token Number();
-
 	Token Identifier();
+	Token Comment();
 
 	void error(std::string ErrorMsg);
 	int CountLines();
