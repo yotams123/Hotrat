@@ -128,14 +128,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Compiler.cpp" />
+    <ClCompile Include="Debugger.cpp" />
+    <ClCompile Include="Interpreter.cpp" />
     <ClCompile Include="rat.cpp" />
     <ClCompile Include="scanner.cpp" />
     <ClCompile Include="Token.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Compiler.h" />
+    <ClInclude Include="Debugger.h" />
+    <ClInclude Include="Interpreter.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="rat.h" />
-    <ClInclude Include="scanner.h" />
+    <ClInclude Include="Scanner.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

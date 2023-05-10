@@ -26,3 +26,4 @@ std::string Token::ToString() {
 }
 
 TokenType Token::GetType() { return type; }
+std::string Token::GetLexeme() { return lexeme; }

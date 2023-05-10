@@ -2,9 +2,18 @@
 #include <fstream>
 #include <string>
 
+#define DEBUG_PRINT_CODE
+
 #include "rat.h"
-#include "scanner.h"
+
+#include "Scanner.h"
 #include "Token.h"
+#include "Compiler.h"
+
+#ifdef DEBUG_PRINT_CODE
+#include "Debugger.h"
+#endif
+
 
 int main(int argc, char *argv[])
 {
@@ -51,9 +60,13 @@ int Run(std::string line) {
     Scanner scanner = Scanner(line);
     std::vector<Token>  tokens = scanner.ScanTokens();
 
-    for (Token token : tokens) { 
-        std::cout << token.ToString() << "\n";
-    }
+    Compiler compiler = Compiler(tokens);
+    Chunk *script = compiler.Compile();
+
+#ifdef DEBUG_PRINT_CODE
+    Debugger debugger = Debugger(script, (std::string)"script");
+    debugger.DisassembleChunk();
+#endif // DEBUG_PRINT_CODE
 
     return 0;
 }

@@ -9,6 +9,8 @@ Scanner::Scanner(std::string src) {
 	this->tokens = std::vector<Token>();
 }
 
+Scanner::~Scanner(){}
+
 std::vector<Token> Scanner::ScanTokens() {
 	Token token = Token(TOKEN_EOF, ""); // placeholder value
 	do { 

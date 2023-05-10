@@ -65,6 +65,8 @@ enum TokenType {
 	TOKEN_EOF, TOKEN_ERROR,
 };
 
+#define NUM_TOKENTYPES TOKEN_ERROR
+
 class Token {
 private:
 	TokenType type;
@@ -73,5 +75,7 @@ private:
 public:
 	Token(TokenType, std::string);
 	std::string ToString();
+
 	TokenType GetType();
+	std::string GetLexeme();
 };

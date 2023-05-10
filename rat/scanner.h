@@ -19,6 +19,8 @@ private:
 
 public:
 	Scanner(std::string src);
+	~Scanner();
+
 	std::vector<Token> ScanTokens();
 
 private:
