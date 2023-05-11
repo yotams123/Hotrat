@@ -36,9 +36,12 @@ void Debugger::DisassembleChunk() {
 void Debugger::DisassembleInstruction() {
 	std::cout << std::setw(4) << std::right << offset << "\t";
 
-	uint8_t instruction = code[offset];
+	Opcode instruction = (Opcode)code[offset];
 
 	switch (instruction) {
+		
+		case OP_NEWLINE:	SimpleOperation("OP_NEWLINE");		break;
+		
 		case OP_CONSTANT:	ConstantOperation("OP_CONSTANT");	break;
 		case OP_RETURN:		SimpleOperation("OP_RETURN");		break;
 	

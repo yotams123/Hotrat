@@ -2,7 +2,7 @@
 
 Compiler::Compiler(std::vector<Token>& tokens) {
 	this->tokens = tokens;
-	CurrentToken = tokens.begin();
+	CurrentToken = this->tokens.begin();
 	
 	HadError = false;
 
@@ -32,7 +32,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[LEFT_PAREN] = { &Compiler::grouping, nullptr, PREC_NONE };
 
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
-	RuleTable[TOKEN_NEWLINE] = { nullptr, nullptr, PREC_END };
+	RuleTable[TOKEN_NEWLINE] = { &Compiler::literal, nullptr, PREC_END };
 
 	CurrentChunk = new Chunk();
 }
@@ -44,7 +44,7 @@ Compiler::~Compiler() {
 Chunk* Compiler::Compile() {
 	while (!match(TOKEN_EOF)) {
 		try {
-			ParsePrecedence(PREC_NONE);
+			ParsePrecedence(PREC_ASSIGN);
 		}
 		catch (int e) {
 			if (e == COMPILE_ERROR) {
@@ -77,8 +77,8 @@ void Compiler::synchronize() {
 
 int Compiler::CountLines() {
 	int lines = 1;
-	std::vector<Token>::iterator i = tokens.begin();
-	while (i < CurrentToken) {
+	std::vector<Token>::iterator i = this->tokens.begin();
+	while (i != CurrentToken) {
 		if (i->GetType() == TOKEN_NEWLINE) lines++;
 		i++;
 	}
@@ -90,16 +90,18 @@ void Compiler::literal() {
 
 	switch (type)
 	{
-	case NONE:				EmitByte(OP_NONE);													break;
-	case STRING_LITERAL:																		break;
+	case NONE:				EmitByte(OP_NONE);		break;
+	case STRING_LITERAL:							break;
 	case INT_LITERAL: {
 		uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
 		if (index == -1) error("Constants table overflow - too many constants");
 		EmitBytes(OP_CONSTANT, index);	break;
 	}
-	case FLOAT_LITERAL:																			break;
-	case TRUE:				EmitByte(OP_TRUE);													break;
-	case FALSE:				EmitByte(OP_FALSE);													break;
+	case FLOAT_LITERAL:								break;
+	case TRUE:				EmitByte(OP_TRUE);		break;
+	case FALSE:				EmitByte(OP_FALSE);		break;
+
+	case TOKEN_NEWLINE:		EmitByte(OP_NEWLINE);	break;
 	default:	break;
 	}
 

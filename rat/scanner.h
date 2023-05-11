@@ -15,9 +15,10 @@ private:
 
 	int start;
 	int current;
-	short line;
+	int line;
 
 	bool HadError;
+
 public:
 	Scanner(std::string src);
 	~Scanner();
@@ -43,5 +44,4 @@ private:
 	Token Comment();
 
 	void error(std::string ErrorMsg);
-	int CountLines();
 };

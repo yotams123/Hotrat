@@ -4,31 +4,6 @@
 
 #include "Chunk.h"
 
-typedef enum {
-	OP_RETURN,
-
-	OP_CONSTANT,
-
-	OP_TRUE,
-	OP_FALSE,
-	OP_NONE,
-
-	OP_ADD,
-	OP_SUB,
-	OP_DIVIDE,
-	OP_MULTIPLY,
-
-	OP_SHIFT_LEFT,
-	OP_SHIFT_RIGHT,
-
-	OP_BIT_AND,
-	OP_BIT_OR,
-	OP_BIT_XOR,
-	OP_NOT,
-
-	OP_NEGATE,
-} Opcode;
-
 class Interpreter
 {
 private:
@@ -45,7 +20,10 @@ private:
 		UNRECOGNIZED_OPCODE,
 		EMPTY_STACK,
 		STACK_OVERFLOW,
-	} ExitCodes;
+	} ExitCode;
+	int LineNum;
+
+	void error(int e, std::string msg);
 public:
 	Interpreter(Chunk*);
 	~Interpreter();

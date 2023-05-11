@@ -46,3 +46,12 @@ bool Chunk::IsAtEnd() {
 void Chunk::SyncIP() {
 	ip = code.begin();
 }
+
+int Chunk::CountLines() {
+	int line = 1;
+	std::vector<uint8_t>::iterator op = code.begin();
+	for (; op < ip; op++) {
+		if (*op == OP_NEWLINE) line++;
+	}
+	return line;
+}

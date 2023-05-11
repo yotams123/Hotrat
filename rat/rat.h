@@ -1,5 +1,5 @@
 #pragma once
 
-void RunScript(std::string filename);
+void RunScript(char *filename);
 void RunPrompt();
-int Run(std::string line);
+int Run(std::string& line);

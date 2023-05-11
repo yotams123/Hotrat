@@ -3,11 +3,11 @@
 Scanner::Scanner(std::string src) {
 	current = 0;
 	start = 0;
-	line = 1;
 
 	this->src = src;
 	this->tokens = std::vector<Token>();
 
+	line = 1;
 	HadError = false;
 }
 
@@ -254,15 +254,15 @@ void Scanner::SkipWhiteSpace() {
 	while (true) {
 		start = current;
 		switch (peek(0)) {
-		case '\n':
-			tokens.push_back(Token(TOKEN_NEWLINE, "\n")); // insert newline token
-		case '\t':
-		case ' ':
-			advance();
-			break;
-		default:
-			return;
-		}
+			case '\n':
+				line++;
+			case '\t':
+			case ' ':
+				advance();
+				break;
+			default:
+				return;
+			}
 	}
 }
 
@@ -295,19 +295,8 @@ bool Scanner::IsAtEnd() {
 	return current >= src.length();
 }
 
+
 void Scanner::error(std::string ErrorMsg) {
-	int line = CountLines();
 	std::cerr << "[Error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
 	HadError = true;
-}
-
-int Scanner::CountLines() {
-	int lines = 0;
-	int runner = 0;
-
-	while (runner < current) {
-		if (src[runner] == '\n') lines++;
-		runner++;
-	}
-	return lines;
 }

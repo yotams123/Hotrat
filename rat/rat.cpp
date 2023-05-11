@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
         std::cout << "Usage: rats [file name]\n";
     }
     else if (argc == 2) {
-        RunScript(argv[2]);
+        RunScript(argv[1]);
     }
     else {
         RunPrompt();
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 }
 
 
-void RunScript(std::string filename) {
+void RunScript(char *filename) {
     std::string buffer;
     std::ifstream Script(filename);
     int code = 0;
@@ -41,7 +41,7 @@ void RunScript(std::string filename) {
         return;
     }
     while (!Script.eof()) {
-        Script >> buffer;
+        std::getline(Script, buffer);
         code = Run(buffer);
         if (code == -1) return;
     }
@@ -57,7 +57,7 @@ void RunPrompt() {
     }
 }
 
-int Run(std::string line) {
+int Run(std::string& line) {
     Scanner scanner = Scanner(line);
     std::vector<Token>  tokens = scanner.ScanTokens();
 
@@ -66,12 +66,12 @@ int Run(std::string line) {
     Compiler compiler = Compiler(tokens);
     Chunk *script = compiler.Compile();
 
+    if (!script) return -1; // compilation error
+
 #ifdef DEBUG_PRINT_CODE
     Debugger debugger = Debugger(script, (std::string)"script");
     debugger.DisassembleChunk();
 #endif // DEBUG_PRINT_CODE
-
-    if (!script) return -1; // compilation error
 
     Interpreter interpreter = Interpreter(script);
     int code = interpreter.interpret();
