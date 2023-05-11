@@ -62,10 +62,10 @@ enum TokenType {
 	COLD, /* constant */
 	BANG, /* ! */
 
-	TOKEN_EOF, TOKEN_ERROR,
+	TOKEN_ERROR, TOKEN_NEWLINE, TOKEN_EOF,
 };
 
-#define NUM_TOKENTYPES TOKEN_ERROR
+const int NumTokenTypes = TOKEN_EOF + 1;
 
 class Token {
 private:

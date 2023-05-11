@@ -249,8 +249,9 @@ void Scanner::SkipWhiteSpace() {
 	while (true) {
 		start = current;
 		switch (peek(0)) {
-		case '\t':
 		case '\n':
+			tokens.push_back(Token(TOKEN_NEWLINE, "\n")); // insert newline token
+		case '\t':
 		case ' ':
 			advance();
 			break;
@@ -264,7 +265,7 @@ char Scanner::advance() {
 	return src[current++];
 }
 
-char Scanner::peek(int distance) {
+char Scanner::peek(size_t distance) {
 	return src[current + distance];
 }
 

@@ -4,7 +4,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	this->tokens = tokens;
 	CurrentToken = tokens.begin();
 
-	for (size_t i = 0; i < NUM_TOKENTYPES; i++) {
+	for (size_t i = 0; i < NumTokenTypes; i++) {
 		RuleTable[i] = { nullptr, nullptr, PREC_NONE };
 	}
 
@@ -21,9 +21,16 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[SHIFT_LEFT] = { nullptr, &Compiler::binary, PREC_BIT };
 	RuleTable[SHIFT_RIGHT] = { nullptr, &Compiler::binary, PREC_BIT };
 
+	RuleTable[BIT_AND] = { nullptr, &Compiler::binary, PREC_BIT };
+	RuleTable[BIT_OR] = { nullptr, &Compiler::binary, PREC_BIT };
+	RuleTable[BIT_XOR] = { nullptr, &Compiler::binary, PREC_BIT };
+	RuleTable[BIT_NOT] = { &Compiler::unary, nullptr, PREC_BIT };
+
+
 	RuleTable[LEFT_PAREN] = { &Compiler::grouping, nullptr, PREC_NONE };
 
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
+	RuleTable[TOKEN_NEWLINE] = { nullptr, nullptr, PREC_END };
 
 	CurrentChunk = new Chunk;
 }
@@ -33,10 +40,25 @@ Compiler::~Compiler() {
 }
 
 Chunk* Compiler::Compile() {
-	while (CurrentToken->GetType() != TOKEN_EOF) {
-		ParsePrecedence(PREC_NONE);
+	while (!match(TOKEN_EOF)) {
+		try {
+			ParsePrecedence(PREC_NONE);
+		}
+		catch (int e) {
+			if (e == COMPILE_ERROR) {
+				synchronize();
+			}
+		}
+		if (match(TOKEN_NEWLINE)) advance();
 	}
 	return CurrentChunk;
+}
+
+void Compiler::synchronize() {
+	while (!match(TOKEN_EOF) && !match(TOKEN_NEWLINE)) {
+		advance();
+	}
+	return;
 }
 
 void Compiler::literal() {
@@ -44,24 +66,17 @@ void Compiler::literal() {
 
 	switch (type)
 	{
-	case NONE:
-		EmitByte(OP_NONE);
-		break;
-	case STRING_LITERAL:
-		break;
-	case INT_LITERAL:
-		EmitBytes(OP_CONSTANT, CurrentChunk->AddConstant(*CurrentToken));
-		break;
-	case FLOAT_LITERAL:
-		break;
-	case TRUE:
-		EmitByte(OP_TRUE);
-		break;
-	case FALSE:
-		EmitByte(OP_FALSE);
-		break;
-	default:
-		break;
+	case NONE:				EmitByte(OP_NONE);													break;
+	case STRING_LITERAL:																		break;
+	case INT_LITERAL: {
+		uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
+		if (index == -1) error("Constants table overflow - too many constants");
+		EmitBytes(OP_CONSTANT, index);	break;
+	}
+	case FLOAT_LITERAL:																			break;
+	case TRUE:				EmitByte(OP_TRUE);													break;
+	case FALSE:				EmitByte(OP_FALSE);													break;
+	default:	break;
 	}
 
 	advance();
@@ -73,9 +88,9 @@ void Compiler::unary() {
 	ParsePrecedence(PREC_UNARY);
 	
 	switch (op.GetType()) {
-	case MINUS:
-		EmitByte(OP_NEGATE);
-		break;
+	case MINUS:	EmitByte(OP_NEGATE); break;
+	case BANG:  EmitByte(OP_NOT);	 break;
+
 	default: break;
 	}
 
@@ -90,27 +105,17 @@ void Compiler::binary() {
 	ParsePrecedence(ToParse);
 	switch (op.GetType())
 	{
-	case PLUS:
-		EmitByte(OP_ADD);
-		break;
-	case MINUS:
-		EmitByte(OP_SUB);
-		break;
-	
-	case STAR:
-		EmitByte(OP_MULTIPLY);
-		break;
-	case SLASH:
-		EmitByte(OP_DIVIDE);
-		break;
+	case PLUS:			EmitByte(OP_ADD);			break;
+	case MINUS:			EmitByte(OP_SUB);			break;
+	case STAR:			EmitByte(OP_MULTIPLY);		break;
+	case SLASH:			EmitByte(OP_DIVIDE);		break;
 
-	case SHIFT_LEFT:
-		EmitByte(OP_SHIFT_LEFT);
-		break;
-		
-	case SHIFT_RIGHT:
-		EmitByte(OP_SHIFT_RIGHT);
-		break;
+	case SHIFT_LEFT:	EmitByte(OP_SHIFT_LEFT);	break;	
+	case SHIFT_RIGHT:	EmitByte(OP_SHIFT_RIGHT);	break;
+
+	case BIT_AND:		EmitByte(OP_BIT_AND);		break;
+	case BIT_OR:		EmitByte(OP_BIT_OR);		break;
+	case BIT_XOR:		EmitByte(OP_BIT_XOR);		break;
 
 	default:
 		break;
@@ -136,7 +141,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	ParseFunction PrefixRule = rule.prefix;
 
 	if (PrefixRule == nullptr) {
-		std::cerr << "Expected expression"; // TODO
+		error("Expected expression");
 		return;
 	}
 	(this->*PrefixRule)();
@@ -145,7 +150,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		rule = GetRule(CurrentToken->GetType());
 		ParseFunction InfixRule = rule.infix;
 		if (InfixRule == nullptr) {
-			std::cerr << "Expected expression"; // TODO
+			error("Expected expression");
 			return;
 		}
 		(this->*InfixRule)();
@@ -159,15 +164,22 @@ Token Compiler::advance() {
 }
 
 bool Compiler::match(TokenType type) {
-	return (CurrentToken++)->GetType() == type;
+	return (CurrentToken)->GetType() == type;
 }
 
 void Compiler::consume(TokenType type, std::string ErrorMsg) {
-	if (match(type)) return;
+	if (match(type)) {
+		advance();
+		return;
+	}
 
-	std::cerr << ErrorMsg; // TODO
+	error(ErrorMsg);
 }
 
+void Compiler::error(std::string msg) {
+	std::cout << "[Compilation error]: " << msg << "\n";
+	throw COMPILE_ERROR;
+}
 
 void Compiler::EmitByte(uint8_t byte) {
 	CurrentChunk->Append(byte);
@@ -190,12 +202,12 @@ Chunk::Chunk() {
 }
 
 uint8_t Chunk::AddConstant(Token constant) {
-	if (constants.size() >= 256) return 0; // TODO throw error
+	if (constants.size() >= 256) return -1; // TODO throw error
 
 	int value = stoi(constant.GetLexeme());
 	constants.push_back(value);
 
-	return constants.size() - 1; // index of constant
+	return (uint8_t)constants.size() - 1; // index of constant
 }
 
 void Chunk::Append(uint8_t byte) {

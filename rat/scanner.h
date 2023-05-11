@@ -28,7 +28,7 @@ private:
 
 	char advance();
 	bool match(char c);
-	char peek(int distance);
+	char peek(size_t distance);
 	bool MatchString(std::string target);
 
 	bool IsAtEnd();

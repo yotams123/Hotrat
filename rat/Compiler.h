@@ -50,6 +50,8 @@ private:
 	std::vector<Token> tokens;
 	std::vector<Token>::iterator CurrentToken;
 
+	int COMPILE_ERROR = 45; // compile error code
+
 	typedef void (Compiler::* ParseFunction) ();
 	
 	typedef struct {
@@ -58,10 +60,13 @@ private:
 		Precedence precedence;
 	} ParseRule;
 
-	ParseRule RuleTable[NUM_TOKENTYPES];
+	ParseRule RuleTable[NumTokenTypes];
 	
 
 	Chunk* CurrentChunk;
+
+	void error(std::string msg);
+	void synchronize();
 
 	// parsing
 	void literal();
