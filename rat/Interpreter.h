@@ -1,4 +1,9 @@
 #pragma once
+
+#include <stack>
+
+#include "Chunk.h"
+
 typedef enum {
 	OP_RETURN,
 
@@ -26,7 +31,26 @@ typedef enum {
 
 class Interpreter
 {
+private:
+	std::stack<int> temps;
+	void push(int value);
+	int pop();
 
-	
+	Chunk* chunk;
+
+	void RunCommand();
+
+	static enum {
+		INTERPRET_OK,
+		UNRECOGNIZED_OPCODE,
+		EMPTY_STACK,
+		STACK_OVERFLOW,
+	} ExitCodes;
+public:
+	Interpreter(Chunk*);
+	~Interpreter();
+
+	int interpret();
+
 };
 

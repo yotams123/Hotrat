@@ -17,6 +17,7 @@ private:
 	int current;
 	short line;
 
+	bool HadError;
 public:
 	Scanner(std::string src);
 	~Scanner();

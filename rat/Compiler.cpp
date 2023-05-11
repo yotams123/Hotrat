@@ -3,6 +3,8 @@
 Compiler::Compiler(std::vector<Token>& tokens) {
 	this->tokens = tokens;
 	CurrentToken = tokens.begin();
+	
+	HadError = false;
 
 	for (size_t i = 0; i < NumTokenTypes; i++) {
 		RuleTable[i] = { nullptr, nullptr, PREC_NONE };
@@ -32,7 +34,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
 	RuleTable[TOKEN_NEWLINE] = { nullptr, nullptr, PREC_END };
 
-	CurrentChunk = new Chunk;
+	CurrentChunk = new Chunk();
 }
 
 Compiler::~Compiler() {
@@ -51,7 +53,19 @@ Chunk* Compiler::Compile() {
 		}
 		if (match(TOKEN_NEWLINE)) advance();
 	}
+	if (HadError) return nullptr;
+
+	CurrentChunk->SyncIP();
 	return CurrentChunk;
+}
+
+
+void Compiler::error(std::string msg) {
+	int line = CountLines();
+	std::cout << "[Compilation error in line " << line << ", at '" << CurrentToken->GetLexeme() 
+		<< "' ]: " << msg << "\n";
+	HadError = true;
+	throw COMPILE_ERROR;
 }
 
 void Compiler::synchronize() {
@@ -59,6 +73,16 @@ void Compiler::synchronize() {
 		advance();
 	}
 	return;
+}
+
+int Compiler::CountLines() {
+	int lines = 1;
+	std::vector<Token>::iterator i = tokens.begin();
+	while (i < CurrentToken) {
+		if (i->GetType() == TOKEN_NEWLINE) lines++;
+		i++;
+	}
+	return lines;
 }
 
 void Compiler::literal() {
@@ -176,11 +200,6 @@ void Compiler::consume(TokenType type, std::string ErrorMsg) {
 	error(ErrorMsg);
 }
 
-void Compiler::error(std::string msg) {
-	std::cout << "[Compilation error]: " << msg << "\n";
-	throw COMPILE_ERROR;
-}
-
 void Compiler::EmitByte(uint8_t byte) {
 	CurrentChunk->Append(byte);
 }
@@ -191,34 +210,4 @@ void Compiler::EmitBytes(uint8_t byte1, uint8_t byte2) {
 
 void Compiler::EmitReturn() {
 	CurrentChunk->Append(OP_RETURN);
-}
-
-Chunk::Chunk() {
-	code = std::vector<uint8_t>();
-	ip = code.begin();
-
-	constants = std::vector<int>();
-	enclosing = nullptr;
-}
-
-uint8_t Chunk::AddConstant(Token constant) {
-	if (constants.size() >= 256) return -1; // TODO throw error
-
-	int value = stoi(constant.GetLexeme());
-	constants.push_back(value);
-
-	return (uint8_t)constants.size() - 1; // index of constant
-}
-
-void Chunk::Append(uint8_t byte) {
-	code.push_back(byte);
-}
-
-void Chunk::Append(uint8_t byte1, uint8_t byte2) {
-	code.push_back(byte1);
-	code.push_back(byte2);
-}
-
-std::vector<uint8_t>& Chunk::GetCode() {
-	return code;
 }

@@ -128,6 +128,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Chunk.cpp" />
     <ClCompile Include="Compiler.cpp" />
     <ClCompile Include="Debugger.cpp" />
     <ClCompile Include="Interpreter.cpp" />
@@ -136,6 +137,7 @@
     <ClCompile Include="Token.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Chunk.h" />
     <ClInclude Include="Compiler.h" />
     <ClInclude Include="Debugger.h" />
     <ClInclude Include="Interpreter.h" />

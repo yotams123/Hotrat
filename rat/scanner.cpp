@@ -7,6 +7,8 @@ Scanner::Scanner(std::string src) {
 
 	this->src = src;
 	this->tokens = std::vector<Token>();
+
+	HadError = false;
 }
 
 Scanner::~Scanner(){}
@@ -17,7 +19,10 @@ std::vector<Token> Scanner::ScanTokens() {
 		token = ScanToken();
 		tokens.push_back(token);
 	} while (token.GetType() != TOKEN_EOF);
-
+	
+	if (HadError) {
+		tokens.clear();
+	}
 	return tokens;
 }
 
@@ -242,7 +247,7 @@ Token Scanner::Comment() {
 	if (IsAtEnd()) {
 		return Token(TOKEN_EOF, "");
 	}
-	return Token(HASH, ""); // compiler will discard
+	return Token(HASH, "#"); // compiler will discard
 }
 
 void Scanner::SkipWhiteSpace() {
@@ -293,6 +298,7 @@ bool Scanner::IsAtEnd() {
 void Scanner::error(std::string ErrorMsg) {
 	int line = CountLines();
 	std::cerr << "[Error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
+	HadError = true;
 }
 
 int Scanner::CountLines() {

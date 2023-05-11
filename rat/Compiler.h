@@ -2,6 +2,7 @@
 
 #include "Token.h"
 #include "Interpreter.h"
+#include "Chunk.h"
 
 #include <vector>
 #include <iostream>
@@ -17,25 +18,6 @@ typedef enum {
 	PREC_LITERAL
 } Precedence;
 
-typedef struct Chunk {
-private:
-
-	std::vector<uint8_t> code;
-	std::vector<uint8_t>::iterator ip;
-
-	std::vector<int> constants;
-	struct Chunk* enclosing;
-
-public:
-	Chunk();
-	uint8_t AddConstant(Token);
-
-	void Append(uint8_t);
-	void Append(uint8_t, uint8_t);
-
-	std::vector<uint8_t>& GetCode();
-} Chunk;
-
 
 class Compiler
 {
@@ -49,6 +31,7 @@ public:
 private:
 	std::vector<Token> tokens;
 	std::vector<Token>::iterator CurrentToken;
+	bool HadError;
 
 	int COMPILE_ERROR = 45; // compile error code
 
@@ -67,6 +50,7 @@ private:
 
 	void error(std::string msg);
 	void synchronize();
+	int CountLines();
 
 	// parsing
 	void literal();

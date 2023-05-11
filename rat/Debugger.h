@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Compiler.h"
+#include "Chunk.h"
+#include "Interpreter.h"
 
 #include <iostream>
 #include <iomanip>

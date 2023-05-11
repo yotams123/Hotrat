@@ -9,6 +9,7 @@
 #include "Scanner.h"
 #include "Token.h"
 #include "Compiler.h"
+#include "Interpreter.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "Debugger.h"
@@ -60,6 +61,8 @@ int Run(std::string line) {
     Scanner scanner = Scanner(line);
     std::vector<Token>  tokens = scanner.ScanTokens();
 
+    if (tokens.empty()) return -1; // found error while scanning
+
     Compiler compiler = Compiler(tokens);
     Chunk *script = compiler.Compile();
 
@@ -68,5 +71,10 @@ int Run(std::string line) {
     debugger.DisassembleChunk();
 #endif // DEBUG_PRINT_CODE
 
-    return 0;
+    if (!script) return -1; // compilation error
+
+    Interpreter interpreter = Interpreter(script);
+    int code = interpreter.interpret();
+
+    return code;
 }
