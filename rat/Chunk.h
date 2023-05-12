@@ -53,6 +53,7 @@ public:
 	std::vector<uint8_t>& GetCode();
 	bool IsAtEnd();
 
+	int GetOffset();
 	void SyncIP();
 	int CountLines();
 } Chunk;

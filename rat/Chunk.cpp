@@ -55,3 +55,7 @@ int Chunk::CountLines() {
 	}
 	return line;
 }
+
+int Chunk::GetOffset() {
+	return std::distance(code.begin(), ip);
+}

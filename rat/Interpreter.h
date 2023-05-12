@@ -1,13 +1,22 @@
 #pragma once
 
-#include <stack>
+#include <iomanip>
 
 #include "Chunk.h"
+
+#define DEBUG_TRACE_STACK
 
 class Interpreter
 {
 private:
-	std::stack<int> temps;
+	static const short StackSize = 255;
+
+	typedef struct {
+		int stk[StackSize];
+		uint8_t count;
+	} StackStruct;
+
+	StackStruct stack;
 	void push(int value);
 	int pop();
 
@@ -16,13 +25,13 @@ private:
 	void RunCommand();
 
 	static enum {
-		INTERPRET_OK,
-		UNRECOGNIZED_OPCODE = 3,
+		INTERPRET_OK = 0,
+		UNRECOGNIZED_OPCODE = 201,
 		EMPTY_STACK,
 		STACK_OVERFLOW,
 	} ExitCode;
-	int LineNum;
 
+	std::string TraceStack(int CodeOffset);
 	void error(int e, std::string msg);
 public:
 	Interpreter(Chunk*);

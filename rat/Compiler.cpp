@@ -47,11 +47,11 @@ Chunk* Compiler::Compile() {
 			expression();
 		}
 		catch (int e) {
-			if (e == COMPILE_ERROR) {
+			if (e >= 100 && e <= 199) {
 				synchronize();
 			}
 		}
-		if (match(TOKEN_NEWLINE)) advance();
+		if (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
 	}
 	if (HadError) return nullptr;
 
@@ -60,12 +60,12 @@ Chunk* Compiler::Compile() {
 }
 
 
-void Compiler::error(std::string msg) {
+void Compiler::error(int e, std::string msg) {
 	int line = CountLines();
 	std::cout << "[Compilation error in line " << line << ", at '" << CurrentToken->GetLexeme() 
 		<< "' ]: " << msg << "\n";
 	HadError = true;
-	throw COMPILE_ERROR;
+	throw e;
 }
 
 void Compiler::synchronize() {
@@ -94,7 +94,7 @@ void Compiler::literal() {
 	case STRING_LITERAL:							break;
 	case INT_LITERAL: {
 		uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
-		if (index == -1) error("Constants table overflow - too many constants");
+		if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
 		EmitBytes(OP_CONSTANT, index);	break;
 	}
 	case FLOAT_LITERAL:								break;
@@ -167,7 +167,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	ParseFunction PrefixRule = rule.prefix;
 
 	if (PrefixRule == nullptr) {
-		error("Expected expression");
+		error(UNEXPECTED_TOKEN, "Expected expression");
 		return;
 	}
 	(this->*PrefixRule)();
@@ -176,7 +176,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		rule = GetRule(CurrentToken->GetType());
 		ParseFunction InfixRule = rule.infix;
 		if (InfixRule == nullptr) {
-			error("Expected expression");
+			error(UNEXPECTED_TOKEN, "Expected expression");
 		}
 		(this->*InfixRule)();
 	}
@@ -198,7 +198,7 @@ void Compiler::consume(TokenType type, std::string ErrorMsg) {
 		return;
 	}
 
-	error(ErrorMsg);
+	error(UNEXPECTED_TOKEN, ErrorMsg);
 }
 
 void Compiler::EmitByte(uint8_t byte) {

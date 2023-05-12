@@ -2,7 +2,8 @@
 
 Interpreter::Interpreter(Chunk* chunk) {
 	this->chunk = chunk;
-	temps = std::stack<int>();
+	
+	stack.count = 0;
 }
 
 Interpreter::~Interpreter() {}
@@ -16,14 +17,22 @@ int Interpreter::interpret() {
 			return e;
 		}
 	}
+
+	return 0;
 }
 
 void Interpreter::RunCommand() {
-	uint8_t op = chunk->advance();
+#ifdef DEBUG_TRACE_STACK
+	int offset = chunk->GetOffset();
+#endif // DEBUG_TRACE_STACK
 
+	uint8_t op = chunk->advance();
 	switch (op)
 	{
-		case OP_NEWLINE:	break; // relevant only to report an error
+	case OP_NEWLINE: {
+		if (stack.count != 0) std::cout << pop() << "\n\n\n";
+		break; 
+	} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
 	
 		case OP_NEGATE: {
@@ -99,22 +108,34 @@ void Interpreter::RunCommand() {
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + op);
 			break;
 	}
-	std::cout << temps.top() << "\n";
+
+#ifdef DEBUG_TRACE_STACK
+	std::cout << TraceStack(offset);
+#endif
 }
 
 int Interpreter::pop() {
-	if (temps.empty()) {
+	if (stack.count == 0) {
 		error(EMPTY_STACK, "Popping from empty stack");
 	}
-	int i = temps.top();
-	temps.pop();
+	int i = stack.stk[--stack.count];
 
 	return i;
 }
 
 void Interpreter::push(int value) {
-	temps.push(value);
+	if (stack.count == StackSize) throw STACK_OVERFLOW;
+	stack.stk[stack.count++] = value;
 	return;
+}
+
+std::string Interpreter::TraceStack(int CodeOffset) {
+	std::string trace = "";
+	for (uint8_t i = 0; i < stack.count; i++) {
+		trace += ("[ " + std::to_string(stack.stk[i]) + "]\t");
+	}
+	trace += '\n';
+	return (std::to_string(CodeOffset) + "\t" + trace);
 }
 
 void Interpreter::error(int e, std::string msg) {

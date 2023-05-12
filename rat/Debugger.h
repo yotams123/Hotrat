@@ -14,6 +14,9 @@ private:
 	std::string ChunkName;
 	std::vector<uint8_t> code;
 
+	int line;
+	std::string PrintLineNum;
+
 	void ConstantOperation(const std::string& name);
 	void SimpleOperation(const std::string& name);
 	void DisassembleInstruction();

@@ -33,7 +33,12 @@ private:
 	std::vector<Token>::iterator CurrentToken;
 	bool HadError;
 
-	int COMPILE_ERROR = 45; // compile error code
+	static enum {
+		COMPILE_OK = 0,
+		UNRECOGNIZED_TOKEN = 101,
+		UNEXPECTED_TOKEN,
+		CONSTANTS_OVERFLOW,
+	} ExitCode;// compile error code
 
 	typedef void (Compiler::* ParseFunction) ();
 	
@@ -48,7 +53,7 @@ private:
 
 	Chunk* CurrentChunk;
 
-	void error(std::string msg);
+	void error(int e, std::string msg);
 	void synchronize();
 	int CountLines();
 

@@ -26,21 +26,30 @@ void Debugger::SimpleOperation(const std::string& name) {
 }
 
 void Debugger::DisassembleChunk() {
+	line = 1;
+	PrintLineNum = "1";
+
 	std::cout << "==" << ChunkName << "==\n";
 
 	while (offset < code.size()) {
 		DisassembleInstruction();
 	}
+	std::cout << "\n\n\n";
 }
 
 void Debugger::DisassembleInstruction() {
-	std::cout << std::setw(4) << std::right << offset << "\t";
+	std::cout << std::setw(4) << std::right << offset << "\t" << PrintLineNum << "\t";
+	PrintLineNum = "|";
 
 	Opcode instruction = (Opcode)code[offset];
 
 	switch (instruction) {
 		
-		case OP_NEWLINE:	SimpleOperation("OP_NEWLINE");		break;
+		case OP_NEWLINE: {
+			PrintLineNum = std::to_string(++line);
+			SimpleOperation("OP_NEWLINE");
+			break;
+		}
 		
 		case OP_CONSTANT:	ConstantOperation("OP_CONSTANT");	break;
 		case OP_RETURN:		SimpleOperation("OP_RETURN");		break;

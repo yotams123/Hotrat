@@ -12,7 +12,7 @@
 #include "Compiler.h"
 #include "Interpreter.h"
 
-#ifdef DEBUG_PRINT_CODE
+#ifdef DEBUG_PRINT_CODE 
 #include "Debugger.h"
 #endif
 
@@ -64,12 +64,12 @@ int Run(std::string& line) {
     Scanner scanner = Scanner(line);
     std::vector<Token>  tokens = scanner.ScanTokens();
 
-    if (tokens.empty()) return 1; // found error while scanning
+    if (tokens.empty()) return 1; // scanner error
 
     Compiler compiler = Compiler(tokens);
     Chunk *script = compiler.Compile();
 
-    if (!script) return 2; // compilation error
+    if (!script) return 100; // compilation error
 
 #ifdef DEBUG_PRINT_CODE
     Debugger debugger = Debugger(script, (std::string)"script");
