@@ -255,6 +255,7 @@ void Scanner::SkipWhiteSpace() {
 		start = current;
 		switch (peek(0)) {
 			case '\n':
+				tokens.push_back(Token(TOKEN_NEWLINE, "\n"));
 				line++;
 			case '\t':
 			case ' ':

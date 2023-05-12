@@ -17,7 +17,7 @@ private:
 
 	static enum {
 		INTERPRET_OK,
-		UNRECOGNIZED_OPCODE,
+		UNRECOGNIZED_OPCODE = 3,
 		EMPTY_STACK,
 		STACK_OVERFLOW,
 	} ExitCode;

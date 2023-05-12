@@ -44,7 +44,7 @@ Compiler::~Compiler() {
 Chunk* Compiler::Compile() {
 	while (!match(TOKEN_EOF)) {
 		try {
-			ParsePrecedence(PREC_ASSIGN);
+			expression();
 		}
 		catch (int e) {
 			if (e == COMPILE_ERROR) {
@@ -177,7 +177,6 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		ParseFunction InfixRule = rule.infix;
 		if (InfixRule == nullptr) {
 			error("Expected expression");
-			return;
 		}
 		(this->*InfixRule)();
 	}

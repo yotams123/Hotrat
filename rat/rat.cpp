@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 
 #define DEBUG_PRINT_CODE
 
@@ -40,11 +41,13 @@ void RunScript(char *filename) {
         std::cerr << "There was an error opening the file => quitting\n";
         return;
     }
-    while (!Script.eof()) {
-        std::getline(Script, buffer);
-        code = Run(buffer);
-        if (code == -1) return;
-    }
+    
+    std::ostringstream stream;
+    stream << Script.rdbuf();
+    buffer = stream.str();
+
+    code = Run(buffer);
+    if (code != 0) exit(code);
 }
 
 void RunPrompt() {
@@ -61,12 +64,12 @@ int Run(std::string& line) {
     Scanner scanner = Scanner(line);
     std::vector<Token>  tokens = scanner.ScanTokens();
 
-    if (tokens.empty()) return -1; // found error while scanning
+    if (tokens.empty()) return 1; // found error while scanning
 
     Compiler compiler = Compiler(tokens);
     Chunk *script = compiler.Compile();
 
-    if (!script) return -1; // compilation error
+    if (!script) return 2; // compilation error
 
 #ifdef DEBUG_PRINT_CODE
     Debugger debugger = Debugger(script, (std::string)"script");
