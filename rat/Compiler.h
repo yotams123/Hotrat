@@ -63,7 +63,6 @@ private:
 	void binary();
 	void grouping();
 	void expression();
-	void newline();
 
 	ParseRule& GetRule(TokenType);
 	void ParsePrecedence(Precedence);

@@ -3,8 +3,16 @@
 Chunk::Chunk() {
 	ip = code.begin();
 
-	constants = std::vector<int>();
+	constants = std::vector<Value*>();
 	enclosing = nullptr;
+}
+
+Chunk::~Chunk() {
+	std::vector<Value*>::iterator i;
+	for (i = constants.begin(); i < constants.end(); i++)
+	{
+		delete* i;
+	}
 }
 
 uint8_t Chunk::advance() {
@@ -15,13 +23,21 @@ uint8_t Chunk::advance() {
 uint8_t Chunk::AddConstant(Token constant) {
 	if (constants.size() >= 256) return -1; // TODO throw error
 
-	int value = stoi(constant.GetLexeme());
-	constants.push_back(value);
+	Value *val;
 
+	switch (constant.GetType()) {
+		case INT_LITERAL:	val = new NumValue(std::stoi(constant.GetLexeme()));	break;
+		case FLOAT_LITERAL:	val = new NumValue(std::stof(constant.GetLexeme()));	break;
+
+		case TRUE:			val = new BoolValue(true);
+		case FALSE:			val = new BoolValue(false);
+	}
+
+	constants.push_back(val);
 	return (uint8_t)constants.size() - 1; // index of constant
 }
 
-int Chunk::ReadConstant(uint8_t index) {
+Value *Chunk::ReadConstant(uint8_t index) {
 	return constants[index];
 }
 
@@ -56,6 +72,6 @@ int Chunk::CountLines() {
 	return line;
 }
 
-int Chunk::GetOffset() {
+_int64 Chunk::GetOffset() {
 	return std::distance(code.begin(), ip);
 }

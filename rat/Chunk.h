@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Token.h"
+#include "Value.h"
 
 typedef enum {
 	OP_NEWLINE,
@@ -37,23 +38,25 @@ private:
 	std::vector<uint8_t> code;
 	std::vector<uint8_t>::iterator ip;
 
-	std::vector<int> constants;
+	std::vector<Value *> constants;
 	struct Chunk* enclosing;
 
 public:
 	Chunk();
+	~Chunk();
+
 	uint8_t AddConstant(Token);
 
 	void Append(uint8_t);
 	void Append(uint8_t, uint8_t);
 
 	uint8_t advance();
-	int ReadConstant(uint8_t index);
+	Value *ReadConstant(uint8_t index);
 
 	std::vector<uint8_t>& GetCode();
 	bool IsAtEnd();
 
-	int GetOffset();
+	_int64 GetOffset();
 	void SyncIP();
 	int CountLines();
 } Chunk;

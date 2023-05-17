@@ -13,6 +13,9 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	// add actual values to table
 	RuleTable[INT_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[FLOAT_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
+	
+	RuleTable[TRUE] = { &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[FALSE] = { &Compiler::literal, nullptr, PREC_LITERAL };
 
 	RuleTable[PLUS] = { nullptr, &Compiler::binary, PREC_TERM };
 	RuleTable[MINUS] = { &Compiler::unary, &Compiler::binary, PREC_TERM };
@@ -30,6 +33,8 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 
 
 	RuleTable[LEFT_PAREN] = { &Compiler::grouping, nullptr, PREC_NONE };
+
+	RuleTable[BANG] = { &Compiler::unary, nullptr, PREC_UNARY };
 
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
 	RuleTable[TOKEN_NEWLINE] = { &Compiler::literal, nullptr, PREC_END };
@@ -90,19 +95,20 @@ void Compiler::literal() {
 
 	switch (type)
 	{
-	case NONE:				EmitByte(OP_NONE);		break;
-	case STRING_LITERAL:							break;
-	case INT_LITERAL: {
-		uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
-		if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
-		EmitBytes(OP_CONSTANT, index);	break;
-	}
-	case FLOAT_LITERAL:								break;
-	case TRUE:				EmitByte(OP_TRUE);		break;
-	case FALSE:				EmitByte(OP_FALSE);		break;
+		case NONE:				EmitByte(OP_NONE);		break;
+		case STRING_LITERAL:							break;
+		case INT_LITERAL:
+		case FLOAT_LITERAL: {
+			uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
+			if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
+			EmitBytes(OP_CONSTANT, index);
+			break;
+		}
+		case TRUE:				EmitByte(OP_TRUE);		break;
+		case FALSE:				EmitByte(OP_FALSE);		break;
 
-	case TOKEN_NEWLINE:		EmitByte(OP_NEWLINE);	break;
-	default:	break;
+		case TOKEN_NEWLINE:		EmitByte(OP_NEWLINE);	break;
+		default:	break;
 	}
 
 	advance();

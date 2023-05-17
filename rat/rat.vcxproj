@@ -135,6 +135,7 @@
     <ClCompile Include="rat.cpp" />
     <ClCompile Include="scanner.cpp" />
     <ClCompile Include="Token.cpp" />
+    <ClCompile Include="Value.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Chunk.h" />
@@ -144,6 +145,7 @@
     <ClInclude Include="Token.h" />
     <ClInclude Include="rat.h" />
     <ClInclude Include="Scanner.h" />
+    <ClInclude Include="Value.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

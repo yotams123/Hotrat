@@ -6,7 +6,15 @@ Interpreter::Interpreter(Chunk* chunk) {
 	stack.count = 0;
 }
 
-Interpreter::~Interpreter() {}
+Interpreter::~Interpreter() {
+	if (objects == nullptr) return;
+	Value* v = objects;
+	while (v != nullptr) {
+		Value* next = v->next;
+		delete v;
+		v = next;
+	}
+}
 
 int Interpreter::interpret() {
 	while (!(chunk->IsAtEnd())) {
@@ -26,82 +34,84 @@ void Interpreter::RunCommand() {
 	int offset = chunk->GetOffset();
 #endif // DEBUG_TRACE_STACK
 
+#define BINARY_NUM_OP(op)  {\
+	Value *b = pop(); \
+	float n2 = b->GetValue().n; \
+	\
+	Value *a = pop(); \
+	float n1 = a->GetValue().n; \
+	\
+	push(NewObject(n1 op n2));\
+}
+
+#define BINARY_BIT_OP(op) {\
+	Value *b = pop();\
+	float n2 = b->GetValue().n; \
+	if (n2 != (int)n2) error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer"); \
+	\
+	Value* a = pop(); \
+	float n1 = a->GetValue().n; \
+	if (n1 != (int)n1) error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer"); \
+	\
+	push(NewObject((float)((int) n1 op (int)n2)));\
+}
+
 	uint8_t op = chunk->advance();
 	switch (op)
 	{
-	case OP_NEWLINE: {
-		if (stack.count != 0) std::cout << pop() << "\n\n\n";
-		break; 
-	} 
+		case OP_NEWLINE: {
+			/*if (stack.count != 0) std::cout << pop() << "\n\n\n";*/
+			pop();
+			break; 
+		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
-	
+		case OP_TRUE: {
+			push(NewObject(true));
+			break;
+		}
+		case OP_FALSE: {
+			push(NewObject(false));
+			break;
+		}
+
 		case OP_NEGATE: {
-			int a = pop();
-			push(-a);
+			Value *a = pop();
+
+			float n = a->GetValue().n;
+			push(new NumValue(-n));
 			break;
 		}
+
 		case OP_NOT: {
-			int a = pop();
-			push(~a);
+			Value *a = pop();
+			Value::datatype t = a->GetType();
+			switch (t) {
+				case Value::NUM_T: {
+					float n = a->GetValue().n;
+					if (n == (int)n)	push(new NumValue(~(int)n));
+					else error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer");
+					break;
+				}
+				case Value::BOOL_T: {
+					bool b = a->GetValue().b;
+					push(NewObject(!b));
+					break;
+				}
+			}
 			break;
 		}
 
-		case OP_ADD:{
-			int b = pop();
-			int a = pop();
-			push(a + b);
-			break;
-		}
-		case OP_SUB: {
-			int b = pop();
-			int a = pop();
-			push(a - b);
-			break;
-		}
-		case OP_MULTIPLY: {
-			int b = pop();
-			int a = pop();
-			push(a * b);
-			break;
-		}
-		case OP_DIVIDE: {
-			int b = pop();
-			int a = pop();
-			push(a / b);
-			break;
-		}
+		case OP_ADD:			BINARY_NUM_OP(+);	break;
+		case OP_SUB:			BINARY_NUM_OP(-);	break;
+		case OP_MULTIPLY: 		BINARY_NUM_OP(*);	break;
+		case OP_DIVIDE:			BINARY_NUM_OP(/);	break;
 
-		case OP_BIT_AND: {
-			int b = pop();
-			int a = pop();
-			push(a & b);
-			break;
-		}
-		case OP_BIT_OR: {
-			int b = pop();
-			int a = pop();
-			push(a | b);
-			break;
-		}
-		case OP_BIT_XOR: {
-			int b = pop();
-			int a = pop();
-			push(a ^ b);
-			break;
-		}
+		case OP_BIT_AND:		BINARY_BIT_OP(&);	break;
+		case OP_BIT_OR:			BINARY_BIT_OP(|);	break;
+		case OP_BIT_XOR:		BINARY_BIT_OP(^);	break;
 
-		case OP_SHIFT_LEFT: {
-			int b = pop();
-			int a = pop();
-			push(a << b);
-			break;
-		}
-		case OP_SHIFT_RIGHT: {
-			int b = pop();
-			int a = pop();
-			push(a >> b);
-			break;
-		}
+		case OP_SHIFT_LEFT:		BINARY_BIT_OP(<<);	break;
+		case OP_SHIFT_RIGHT:	BINARY_BIT_OP(>>);	break;
 
 
 		default:
@@ -114,25 +124,41 @@ void Interpreter::RunCommand() {
 #endif
 }
 
-int Interpreter::pop() {
-	if (stack.count == 0) {
+Value *Interpreter::pop() {
+	if (stack.count <= 0) {
 		error(EMPTY_STACK, "Popping from empty stack");
 	}
-	int i = stack.stk[--stack.count];
+
+	Value *i = stack.stk[--stack.count];
 
 	return i;
 }
 
-void Interpreter::push(int value) {
+void Interpreter::push(Value *value) {
 	if (stack.count == StackSize) throw STACK_OVERFLOW;
 	stack.stk[stack.count++] = value;
 	return;
 }
 
+
+NumValue *Interpreter::NewObject(float f) {
+	NumValue* res = new NumValue(f);
+	res->next = objects;
+	objects = res;
+	return res;
+}
+
+BoolValue* Interpreter::NewObject(bool b) {
+	BoolValue* res = new BoolValue(b);
+	res->next = objects;
+	objects = res;
+	return res;
+}
+
 std::string Interpreter::TraceStack(int CodeOffset) {
 	std::string trace = "";
 	for (uint8_t i = 0; i < stack.count; i++) {
-		trace += ("[ " + std::to_string(stack.stk[i]) + "]\t");
+		/*trace += ("[ " + std::to_string(stack.stk[i]) + "]\t");*/
 	}
 	trace += '\n';
 	return (std::to_string(CodeOffset) + "\t" + trace);

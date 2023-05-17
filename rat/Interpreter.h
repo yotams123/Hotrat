@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include "Chunk.h"
+#include "Value.h"
 
 #define DEBUG_TRACE_STACK
 
@@ -12,24 +13,31 @@ private:
 	static const short StackSize = 255;
 
 	typedef struct {
-		int stk[StackSize];
+		Value *stk[StackSize];
 		uint8_t count;
 	} StackStruct;
 
 	StackStruct stack;
-	void push(int value);
-	int pop();
+	void push(Value *value);
+	Value *pop();
 
 	Chunk* chunk;
 
 	void RunCommand();
+
+	Value* objects;
 
 	static enum {
 		INTERPRET_OK = 0,
 		UNRECOGNIZED_OPCODE = 201,
 		EMPTY_STACK,
 		STACK_OVERFLOW,
+		TYPE_ERROR
 	} ExitCode;
+
+
+	BoolValue *NewObject(bool b);
+	NumValue *NewObject(float f);
 
 	std::string TraceStack(int CodeOffset);
 	void error(int e, std::string msg);
