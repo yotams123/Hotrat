@@ -14,7 +14,6 @@ typedef enum {
 
 	OP_TRUE,
 	OP_FALSE,
-	OP_NONE,
 
 	OP_ADD,
 	OP_SUB,
@@ -32,6 +31,14 @@ typedef enum {
 	OP_EQUALS,
 	OP_GREATER,
 	OP_LESS,
+
+	OP_DEFINE_GLOBAL,
+	OP_DECLARE_GLOBAL_BOOL,
+	OP_DECLARE_GLOBAL_NUM,
+	OP_DECLARE_GLOBAL_STR,
+
+	OP_SET_GLOBAL,
+	OP_GET_GLOBAL,
 
 	OP_NEGATE,
 } Opcode;
@@ -63,5 +70,6 @@ public:
 	_int64 GetOffset();
 	void SyncIP();
 	int CountLines();
+
 } Chunk;
 

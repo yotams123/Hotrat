@@ -11,8 +11,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	}
 
 	// add actual values to table
-	RuleTable[INT_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
-	RuleTable[FLOAT_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[NUM_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
 	
 	RuleTable[TRUE] = { &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[FALSE] = { &Compiler::literal, nullptr, PREC_LITERAL };
@@ -45,6 +44,10 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
 	RuleTable[TOKEN_NEWLINE] = { &Compiler::literal, nullptr, PREC_END };
 
+	RuleTable[NUM_KW] = { &Compiler::declaration, nullptr, PREC_NONE };
+	RuleTable[BOOL] = { &Compiler::declaration, nullptr, PREC_NONE };
+
+	RuleTable[IDENTIFIER] = { &Compiler::variable, nullptr, PREC_LITERAL };
 	CurrentChunk = new Chunk();
 }
 
@@ -101,10 +104,8 @@ void Compiler::literal() {
 
 	switch (type)
 	{
-		case NONE:				EmitByte(OP_NONE);		break;
 		case STRING_LITERAL:							break;
-		case INT_LITERAL:
-		case FLOAT_LITERAL: {
+		case NUM_LITERAL: {
 			uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
 			if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
 			EmitBytes(OP_CONSTANT, index);
@@ -118,6 +119,21 @@ void Compiler::literal() {
 	}
 
 	advance();
+}
+
+
+void Compiler::variable() {
+	Token Identifier = advance();
+	uint8_t index = CurrentChunk->AddConstant(Identifier);
+	
+	if (match(EQUALS)) {
+		advance();
+		expression();
+		EmitBytes(OP_SET_GLOBAL, index);
+	}
+	else {
+		EmitBytes(OP_GET_GLOBAL, index);
+	}
 }
 
 void Compiler::unary() {
@@ -177,6 +193,53 @@ void Compiler::expression(){
 	ParsePrecedence(PREC_ASSIGN);
 }
 
+void Compiler::declaration() {
+	Token kw = Current();
+	switch (kw.GetType()) {
+		
+		case NUM_KW:
+		case BOOL: {
+			VarDeclaration();
+			break;
+		}
+	}
+}
+
+void Compiler::VarDeclaration() {
+	Token DataType = advance();
+	Token Name = advance();
+
+	switch (DataType.GetType())
+	{
+		case NUM_KW: {
+			uint8_t IdIndex = CurrentChunk->AddConstant(Name);
+			if (match(EQUALS)) {
+				advance();
+				expression();
+				EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
+			}
+			else {
+				EmitBytes(OP_DECLARE_GLOBAL_NUM, IdIndex);
+			}
+			break;
+		}
+		case BOOL: {
+			uint8_t IdIndex = CurrentChunk->AddConstant(Name);
+			if (match(EQUALS)) {
+				advance();
+				expression();
+				EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
+			}
+			else {
+				EmitBytes(OP_DECLARE_GLOBAL_BOOL, IdIndex);
+			}
+			break;
+		}
+		default:
+			break;
+	}
+}
+
 Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 	return RuleTable[type];
 }
@@ -205,6 +268,20 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 
 Token Compiler::advance() {
 	return *(CurrentToken++);
+}
+
+Token Compiler::Current() {
+	return *(CurrentToken);
+}
+
+Token Compiler::LookBack(int distance) {
+	const int d = distance;
+	Token t = Token(TOKEN_ERROR, "");
+	do {
+		t = *(--CurrentToken);
+	} while (--distance > 0);
+	for (int i = 0; i < d; i++) CurrentToken++; // resetting the iterator
+	return t;
 }
 
 bool Compiler::match(TokenType type) {

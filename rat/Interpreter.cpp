@@ -4,6 +4,8 @@ Interpreter::Interpreter(Chunk* chunk) {
 	this->chunk = chunk;
 	this->objects = nullptr;
 	stack.count = 0;
+	
+	globals = std::unordered_map<std::string, Value*>();
 }
 
 Interpreter::~Interpreter() {
@@ -67,6 +69,16 @@ void Interpreter::RunCommand() {
 	push(NewObject((float)((int) n1 op (int)n2)));\
 }
 
+
+#define DECLARE_NONE_VAR(type, initval) {\
+	uint8_t index = chunk->advance();\
+	std::string identifier = GetConstantStr(index); \
+\
+	type* b = NewObject(initval); \
+	b->SetAsNone(); \
+	AddGlobal(identifier, b); \
+}
+
 	uint8_t op = chunk->advance();
 	switch (op)
 	{
@@ -127,6 +139,36 @@ void Interpreter::RunCommand() {
 		case OP_LESS:		BINARY_BOOL_OP(<); break;
 		case OP_GREATER:	BINARY_BOOL_OP(>); break;
 
+		case OP_DEFINE_GLOBAL: {
+			uint8_t IdIndex = chunk->advance();
+			std::string identifier = GetConstantStr(IdIndex);
+
+			Value* v = pop();
+			AddGlobal(identifier, v);
+			break;
+		}
+
+		case OP_DECLARE_GLOBAL_BOOL:	DECLARE_NONE_VAR(BoolValue, false);				break;
+		case OP_DECLARE_GLOBAL_NUM:		DECLARE_NONE_VAR(NumValue, (float)0);			break;
+		case OP_DECLARE_GLOBAL_STR:		DECLARE_NONE_VAR(StrValue, (std::string&)"");	break;
+
+		case OP_SET_GLOBAL: {
+			uint8_t IdIndex = chunk->advance();
+			std::string identifier = GetConstantStr(IdIndex);
+
+			Value* v = pop();
+			globals[identifier] = v;
+			break;
+		}
+						  
+		case OP_GET_GLOBAL: {
+			uint8_t IdIndex = chunk->advance();
+			std::string identifier = GetConstantStr(IdIndex);
+
+			push(globals[identifier]);
+			break;
+		}
+
 		default:
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + op);
 			break;
@@ -172,6 +214,24 @@ BoolValue* Interpreter::NewObject(bool b) {
 	res->next = objects;
 	objects = res;
 	return res;
+}
+
+StrValue* Interpreter::NewObject(std::string& s) {
+	StrValue* res = new StrValue(s);
+	res->next = objects;
+	objects = res;
+	return res;
+}
+
+std::string Interpreter::GetConstantStr(uint8_t index) {
+	std::string s(chunk->ReadConstant(index)->GetValue().s);
+	return s;
+}
+
+
+
+void Interpreter::AddGlobal(std::string& name, Value* value) {
+	this->globals.insert({ name, value });
 }
 
 std::string Interpreter::TraceStack(int CodeOffset) {

@@ -7,7 +7,7 @@
 
 enum TokenType {
 	//data types
-	INT_KW, STRING_KW, FLOAT_KW, BOOL, VOID, NONE,
+	NUM_KW, STRING_KW, BOOL, VOID, NONE,
 
 	// braces, parens, brackets	{}, (), []
 	LEFT_PAREN, RIGHT_PAREN,
@@ -48,7 +48,7 @@ enum TokenType {
 	BIT_XOR_ASSIGN,					// ^= 
 
 	// literals
-	STRING_LITERAL, INT_LITERAL, FLOAT_LITERAL,
+	STRING_LITERAL, NUM_LITERAL,
 	TRUE, FALSE,
 
 	// runnables - functions

@@ -26,11 +26,10 @@ uint8_t Chunk::AddConstant(Token constant) {
 	Value *val;
 
 	switch (constant.GetType()) {
-		case INT_LITERAL:	val = new NumValue(std::stoi(constant.GetLexeme()));	break;
-		case FLOAT_LITERAL:	val = new NumValue(std::stof(constant.GetLexeme()));	break;
-
+		case NUM_LITERAL:	val = new NumValue(std::stof(constant.GetLexeme()));	break;
 		case TRUE:			val = new BoolValue(true);
 		case FALSE:			val = new BoolValue(false);
+		case IDENTIFIER:	val = new StrValue((std::string&)constant.GetLexeme());
 	}
 
 	constants.push_back(val);

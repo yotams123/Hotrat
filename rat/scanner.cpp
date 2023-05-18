@@ -55,18 +55,18 @@ Token Scanner::ScanToken() {
 		case 'f': {
 			if (CheckWord("or"))	return Token(FOR, "for");
 			if (CheckWord("alse"))	return Token(FALSE, "false");
-			if (CheckWord("loat"))	return Token(FLOAT_KW, "float");
 			break; 
 		}
 
 		case 'i': {
 			if (CheckWord("f"))		return Token(IF, "if");
 			if (CheckWord("n"))		return Token(IN, "in");
-			if (CheckWord("nt"))	return Token(INT_KW, "int");
 			break; 
 		}
 
 		case 'n': if (CheckWord("one"))		return Token(NONE, "none");			break;
+		case 'N': if (CheckWord("umber"))	return Token(NUM_KW, "Number");		break;
+
 		case 'o': if (CheckWord("r"))		return Token(OR, "or");				break;
 		case 'r': if (CheckWord("eturn"))	return Token(RETURN, "return");		break;
 		case 'R': if (CheckWord("unnable")) return Token(RUNNABLE, "Runnable"); break;
@@ -222,9 +222,8 @@ Token Scanner::Number() {
 	if (peek(0) == '.') {
 		advance();
 		while (isdigit(peek(0))) { advance(); }
-		return Token(FLOAT_LITERAL, src.substr(start, current - start));
 	}
-	return Token(INT_LITERAL, src.substr(start, current - start));
+	return Token(NUM_LITERAL, src.substr(start, current - start));
 }
 
 Token Scanner::String() {

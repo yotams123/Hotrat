@@ -60,10 +60,14 @@ private:
 
 	// parsing
 	void literal();
+	void variable();
 	void unary();
 	void binary();
 	void grouping();
 	void expression();
+	void declaration();
+	void VarDeclaration();
+	
 
 	ParseRule& GetRule(TokenType);
 	void ParsePrecedence(Precedence);
@@ -71,6 +75,8 @@ private:
 	Token advance();
 	bool match(TokenType type);
 	void consume(TokenType type, std::string ErrorMsg);
+	Token Current();
+	Token LookBack(int distance);
 
 	// bytecode
 	void EmitByte(uint8_t byte);

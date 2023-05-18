@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iomanip>
+#include <unordered_map>
 
 #include "Chunk.h"
 #include "Value.h"
@@ -38,9 +39,17 @@ private:
 
 	BoolValue *NewObject(bool b);
 	NumValue *NewObject(float f);
+	StrValue* NewObject(std::string& s);
+
+	std::string GetConstantStr(uint8_t index);
+	float GetConstantNum(uint8_t index);
+	bool GetConstantBool(uint8_t index);
 
 	std::string TraceStack(int CodeOffset);
 	void error(int e, std::string msg);
+
+	std::unordered_map<std::string, Value*> globals;
+	void AddGlobal(std::string&, Value*);
 
 public:
 	Interpreter(Chunk*);

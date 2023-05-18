@@ -10,10 +10,8 @@ std::string Token::ToString() {
 	{
 	case STRING_LITERAL:
 		return " { String literal,\tvalue = \"" + lexeme + "\"}";
-	case INT_LITERAL:
-		return " { Int literal, \tvalue = " + lexeme + " }";
-	case FLOAT_LITERAL:
-		return " { Float literal, \tvalue = " + lexeme + " }";
+	case NUM_LITERAL:
+		return " { Number literal, \tvalue = " + lexeme + " }";
 	case TOKEN_EOF:
 		return " { EOF token}";
 	case TOKEN_ERROR:

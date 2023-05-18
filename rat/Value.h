@@ -5,18 +5,22 @@
 typedef union {
 	float n;
 	bool b;
+	const char *s;
 } UniVal;
 
 class Value {
 public:
 	typedef enum {
 		NUM_T,
-		BOOL_T
+		BOOL_T,
+		STRING_T,
 	} datatype;
 
 protected:
 	datatype t;
 	std::string StrRep;
+
+	bool IsNone;
 
 public:
 	Value();
@@ -28,6 +32,8 @@ public:
 
 	Value* next;
 	datatype GetType();
+
+	void SetAsNone();
 
 	std::string ToString();
 };
@@ -54,4 +60,15 @@ public:
 
 	bool GetValue();
 	void SetValue(bool b);
+};
+
+
+class StrValue : public Value {
+protected:
+
+public:
+	StrValue(std::string& value);
+
+	std::string GetValue();
+	void SetValue(std::string& s);
 };
