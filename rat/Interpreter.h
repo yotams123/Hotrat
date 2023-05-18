@@ -41,6 +41,7 @@ private:
 
 	std::string TraceStack(int CodeOffset);
 	void error(int e, std::string msg);
+
 public:
 	Interpreter(Chunk*);
 	~Interpreter();

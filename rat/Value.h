@@ -1,5 +1,6 @@
 #pragma once
-
+#include <string>
+#include <sstream>
 
 typedef union {
 	float n;
@@ -15,6 +16,7 @@ public:
 
 protected:
 	datatype t;
+	std::string StrRep;
 
 public:
 	Value();
@@ -26,6 +28,8 @@ public:
 
 	Value* next;
 	datatype GetType();
+
+	std::string ToString();
 };
 
 class NumValue : public Value {
@@ -37,6 +41,7 @@ public:
 
 	float GetValue();
 	void SetValue(float f);
+
 };
 
 

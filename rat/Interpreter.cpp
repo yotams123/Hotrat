@@ -2,7 +2,7 @@
 
 Interpreter::Interpreter(Chunk* chunk) {
 	this->chunk = chunk;
-	
+	this->objects = nullptr;
 	stack.count = 0;
 }
 
@@ -60,8 +60,7 @@ void Interpreter::RunCommand() {
 	switch (op)
 	{
 		case OP_NEWLINE: {
-			/*if (stack.count != 0) std::cout << pop() << "\n\n\n";*/
-			pop();
+			if (stack.count != 0) std::cout << pop()->ToString() << "\n\n\n";
 			break; 
 		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
@@ -88,7 +87,7 @@ void Interpreter::RunCommand() {
 			switch (t) {
 				case Value::NUM_T: {
 					float n = a->GetValue().n;
-					if (n == (int)n)	push(new NumValue(~(int)n));
+					if (n / 1 == n)	push(new NumValue(~(int)n));
 					else error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer");
 					break;
 				}
@@ -158,7 +157,7 @@ BoolValue* Interpreter::NewObject(bool b) {
 std::string Interpreter::TraceStack(int CodeOffset) {
 	std::string trace = "";
 	for (uint8_t i = 0; i < stack.count; i++) {
-		/*trace += ("[ " + std::to_string(stack.stk[i]) + "]\t");*/
+		trace += ("[ " + stack.stk[i]->ToString() + "]\t");
 	}
 	trace += '\n';
 	return (std::to_string(CodeOffset) + "\t" + trace);

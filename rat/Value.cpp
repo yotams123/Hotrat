@@ -3,6 +3,7 @@
 Value::Value() {
 	this->next = nullptr;
 	this->t = NUM_T; // temporary value, will be set by the actual type's initializer
+	this->StrRep = "Error - value with no type";
 }
 
 Value::~Value() {
@@ -11,7 +12,7 @@ Value::~Value() {
 
 
 UniVal Value::GetValue() {
-	UniVal v;
+	UniVal v; v.n = 0;
 	switch (this->t)
 	{
 	case NUM_T:		v.n = ((NumValue*)this)->GetValue();	break;
@@ -36,10 +37,18 @@ void Value::SetValue(bool b) {
 	((BoolValue*)this)->SetValue(b);
 }
 
+std::string Value::ToString() {	
+	return this->StrRep;
+}
+
 
 NumValue::NumValue(float value) {
 	this->value = value;
 	this->t = NUM_T;
+	
+	std::stringstream s;
+	s << value;
+	this->StrRep = s.str();
 }
 
 float NumValue::GetValue() {
@@ -48,12 +57,18 @@ float NumValue::GetValue() {
 
 void NumValue::SetValue(float f) {
 	this->value = f;
+
+	std::stringstream s;
+	s << f;
+	this->StrRep = s.str();
 }
 
 
 BoolValue::BoolValue(bool value) {
 	this->value = value;
 	this->t = BOOL_T;
+	if (value) this->StrRep = "true";
+	else this->StrRep = "false";
 }
 
 
@@ -63,4 +78,6 @@ bool BoolValue::GetValue() {
 
 void BoolValue::SetValue(bool b) {
 	this->value = b;
+	if (b) this->StrRep = "true";
+	else this->StrRep = "false";
 }
