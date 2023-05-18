@@ -44,6 +44,17 @@ void Interpreter::RunCommand() {
 	push(NewObject(n1 op n2));\
 }
 
+#define BINARY_BOOL_OP(op) {\
+	\
+		Value* b = pop(); \
+		float n2 = b->GetValue().n; \
+		\
+		Value* a = pop(); \
+		float n1 = a->GetValue().n; \
+		\
+		push(NewObject((bool)(n1 op n2))); \
+}
+
 #define BINARY_BIT_OP(op) {\
 	Value *b = pop();\
 	float n2 = b->GetValue().n; \
@@ -112,6 +123,9 @@ void Interpreter::RunCommand() {
 		case OP_SHIFT_LEFT:		BINARY_BIT_OP(<<);	break;
 		case OP_SHIFT_RIGHT:	BINARY_BIT_OP(>>);	break;
 
+		case OP_EQUALS:		BINARY_BOOL_OP(== ); break;
+		case OP_LESS:		BINARY_BOOL_OP(<); break;
+		case OP_GREATER:	BINARY_BOOL_OP(>); break;
 
 		default:
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + op);
@@ -125,7 +139,7 @@ void Interpreter::RunCommand() {
 
 Value *Interpreter::pop() {
 	if (stack.count <= 0) {
-		error(EMPTY_STACK, "Popping from empty stack");
+		error(STACK_UNDERFLOW, "Popping from empty stack");
 	}
 
 	Value *i = stack.stk[--stack.count];
@@ -138,6 +152,12 @@ void Interpreter::push(Value *value) {
 	stack.stk[stack.count++] = value;
 	return;
 }
+
+Value *Interpreter::peek(int depth) {
+	if (depth > stack.count - 1) error(STACK_UNDERFLOW, "Can't peek so deep into stack");
+	return this->stack.stk[stack.count - 1 - depth];
+}
+
 
 
 NumValue *Interpreter::NewObject(float f) {

@@ -31,6 +31,12 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[BIT_XOR] = { nullptr, &Compiler::binary, PREC_BIT };
 	RuleTable[BIT_NOT] = { &Compiler::unary, nullptr, PREC_BIT };
 
+	RuleTable[DOUBLE_EQUALS] = { nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[BANG_EQUALS] = { nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[GREATER_EQUAL] = { nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[LESS_EQUAL] = { nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[GREATER] = { nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[LESS] = { nullptr, &Compiler::binary, PREC_COMPARE };
 
 	RuleTable[LEFT_PAREN] = { &Compiler::grouping, nullptr, PREC_NONE };
 
@@ -148,6 +154,13 @@ void Compiler::binary() {
 	case BIT_AND:		EmitByte(OP_BIT_AND);		break;
 	case BIT_OR:		EmitByte(OP_BIT_OR);		break;
 	case BIT_XOR:		EmitByte(OP_BIT_XOR);		break;
+
+	case DOUBLE_EQUALS:	EmitByte(OP_EQUALS);			break;
+	case BANG_EQUALS:	EmitBytes(OP_EQUALS, OP_NOT);	break;
+	case GREATER:		EmitByte(OP_GREATER);			break;
+	case GREATER_EQUAL:	EmitBytes(OP_LESS, OP_NOT);		break;
+	case LESS:			EmitByte(OP_LESS);				break;
+	case LESS_EQUAL:	EmitBytes(OP_GREATER, OP_NOT);	break;
 
 	default:
 		break;

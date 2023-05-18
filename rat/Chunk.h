@@ -29,6 +29,10 @@ typedef enum {
 	OP_BIT_XOR,
 	OP_NOT,
 
+	OP_EQUALS,
+	OP_GREATER,
+	OP_LESS,
+
 	OP_NEGATE,
 } Opcode;
 

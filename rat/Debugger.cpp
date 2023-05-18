@@ -70,10 +70,13 @@ void Debugger::DisassembleInstruction() {
 		case OP_TRUE:	SimpleOperation("OP_TRUE");		break;
 		case OP_FALSE:	SimpleOperation("OP_FALSE");	break;
 
+		case OP_EQUALS:		SimpleOperation("OP_EQUALS");	break;
+		case OP_LESS:		SimpleOperation("OP_LESS");		break;
+		case OP_GREATER:	SimpleOperation("OP_GREATER");	break;
+
 		case OP_NEGATE: SimpleOperation("OP_NEGATE");	break;
 		case OP_NOT:	SimpleOperation("OP_NOT");		break;
 
-		default:
-			std::cout << "Unrecognized instruction\n";
+		default:	std::cout << "Unrecognized instruction" << instruction << "\n";
 	}
 }

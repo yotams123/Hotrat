@@ -30,7 +30,7 @@ private:
 	static enum {
 		INTERPRET_OK = 0,
 		UNRECOGNIZED_OPCODE = 201,
-		EMPTY_STACK,
+		STACK_UNDERFLOW,
 		STACK_OVERFLOW,
 		TYPE_ERROR
 	} ExitCode;
@@ -47,6 +47,7 @@ public:
 	~Interpreter();
 
 	int interpret();
+	Value* peek(int depth);
 
 };
 
