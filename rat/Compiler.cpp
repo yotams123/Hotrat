@@ -12,6 +12,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 
 	// add actual values to table
 	RuleTable[NUM_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[STRING_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
 	
 	RuleTable[TRUE] = { &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[FALSE] = { &Compiler::literal, nullptr, PREC_LITERAL };
@@ -103,13 +104,14 @@ void Compiler::literal() {
 
 	switch (type)
 	{
-		case STRING_LITERAL:							break;
+		case STRING_LITERAL:
 		case NUM_LITERAL: {
 			uint8_t index = CurrentChunk->AddConstant(Current());
 			if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
 			EmitBytes(OP_CONSTANT, index);
 			break;
 		}
+
 		case TRUE:				EmitByte(OP_TRUE);		break;
 		case FALSE:				EmitByte(OP_FALSE);		break;
 
