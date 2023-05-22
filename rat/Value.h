@@ -2,38 +2,30 @@
 #include <string>
 #include <sstream>
 
-typedef union {
-	float n;
-	bool b;
-	const char *s;
-} UniVal;
-
 class Value {
 public:
 	typedef enum {
+		NONE_T,
 		NUM_T,
 		BOOL_T,
 		STRING_T,
 	} datatype;
 
 protected:
-	datatype t;
+	datatype type;
 	std::string StrRep;
-
-	bool IsNone;
 
 public:
 	Value();
 	~Value();
 
-	UniVal GetValue();
 	virtual void SetValue(float n);
 	virtual void SetValue(bool b);
+	
+	void SetAsNone();
 
 	Value* next;
 	datatype GetType();
-
-	void SetAsNone();
 
 	std::string ToString();
 };

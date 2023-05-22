@@ -36,7 +36,6 @@ Token Scanner::ScanToken() {
 		case '\0':	return Token(TOKEN_EOF, "");
 
 		case 'a': if (CheckWord("nd"))	return Token(AND, "and");	break;
-		case 'b': if (CheckWord("ool")) return Token(BOOL, "bool"); break;
 		case 'c': if (CheckWord("old")) return Token(COLD, "cold"); break;
 
 		case 'e': {
@@ -65,12 +64,14 @@ Token Scanner::ScanToken() {
 		}
 
 		case 'n': if (CheckWord("one"))		return Token(NONE, "none");			break;
-		case 'N': if (CheckWord("umber"))	return Token(NUM_KW, "Number");		break;
 
 		case 'o': if (CheckWord("r"))		return Token(OR, "or");				break;
-		case 'r': if (CheckWord("eturn"))	return Token(RETURN, "return");		break;
+		case 'r': {
+			if (CheckWord("eturn"))	return Token(RETURN, "return");
+			if (CheckWord("at")) return Token(RAT, "rat");
+		}
+
 		case 'R': if (CheckWord("unnable")) return Token(RUNNABLE, "Runnable"); break;
-		case 's': if (CheckWord("tring"))	return Token(STRING_KW, "string");	break;
 		
 		case 't': { 
 			if (CheckWord("his")) return Token(THIS, "this");
@@ -78,7 +79,6 @@ Token Scanner::ScanToken() {
 			break;
 		}
 		
-		case 'v': if (CheckWord("oid"))		return Token(VOID, "void");		break;
 		case 'w': if (CheckWord("hile"))	return Token(WHILE, "while");	break;
 		case 'x': if (CheckWord("or"))		return Token(XOR, "xor");		break;
 

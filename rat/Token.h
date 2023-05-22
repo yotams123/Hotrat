@@ -7,7 +7,7 @@
 
 enum TokenType {
 	//data types
-	NUM_KW, STRING_KW, BOOL, VOID, NONE,
+	NONE,
 
 	// braces, parens, brackets	{}, (), []
 	LEFT_PAREN, RIGHT_PAREN,

@@ -66,6 +66,7 @@ void Debugger::DisassembleInstruction() {
 		case OP_BIT_OR:			SimpleOperation("OP_BIT_OR");	break;
 		case OP_BIT_XOR:		SimpleOperation("OP_BIT_XOR");	break;
 
+		case OP_NONE:	SimpleOperation("OP_NONE");		break;
 		case OP_TRUE:	SimpleOperation("OP_TRUE");		break;
 		case OP_FALSE:	SimpleOperation("OP_FALSE");	break;
 
@@ -75,10 +76,6 @@ void Debugger::DisassembleInstruction() {
 
 		case OP_NEGATE: SimpleOperation("OP_NEGATE");	break;
 		case OP_NOT:	SimpleOperation("OP_NOT");		break;
-
-		case OP_DECLARE_GLOBAL_BOOL:	ConstantOperation("OP_DECLARE_GLOBAL_BOOL");	break;
-		case OP_DECLARE_GLOBAL_NUM:		ConstantOperation("OP_DECLARE_GLOBAL_NUM");		break;
-		case OP_DECLARE_GLOBAL_STR:		ConstantOperation("OP_DECLARE_GLOBAL_STR");		break;
 
 		case OP_DEFINE_GLOBAL:		ConstantOperation("OP_DEFINE_GLOBAL");	break;
 		case OP_SET_GLOBAL:			ConstantOperation("OP_SET_GLOBAL");		break;

@@ -1,5 +1,12 @@
 #include "Interpreter.h"
 
+bool IsIntegerValue(Value *f) {
+	if (f->GetType() != Value::NUM_T) return false;
+	float n = ((NumValue*)f)->GetValue();
+	if (n / 1 == n) return true;
+	return false;
+}
+
 Interpreter::Interpreter(Chunk* chunk) {
 	this->chunk = chunk;
 	this->objects = nullptr;
@@ -38,45 +45,41 @@ void Interpreter::RunCommand() {
 
 #define BINARY_NUM_OP(op)  {\
 	Value *b = pop(); \
-	float n2 = b->GetValue().n; \
-	\
 	Value *a = pop(); \
-	float n1 = a->GetValue().n; \
-	\
-	push(NewObject(n1 op n2));\
+	if (b->GetType() == Value::NUM_T && a->GetType() == Value::NUM_T){\
+		\
+		float n1 = ((NumValue *)a)->GetValue(); \
+		float n2 = ((NumValue *)b)->GetValue(); \
+		push(NewObject(n1 op n2));\
+	} else {\
+		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
+	}\
 }
 
-#define BINARY_BOOL_OP(op) {\
-	\
-		Value* b = pop(); \
-		float n2 = b->GetValue().n; \
+#define BINARY_COMP_OP(op) {\
+	Value *b = pop(); \
+	Value *a = pop(); \
+	if (b->GetType() == Value::NUM_T && a->GetType() == Value::NUM_T){\
 		\
-		Value* a = pop(); \
-		float n1 = a->GetValue().n; \
-		\
-		push(NewObject((bool)(n1 op n2))); \
+		float n1 = ((NumValue *)a)->GetValue(); \
+		float n2 = ((NumValue *)b)->GetValue(); \
+		push(NewObject((bool)(n1 op n2)));\
+	} else {\
+		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
+	}\
 }
 
 #define BINARY_BIT_OP(op) {\
-	Value *b = pop();\
-	float n2 = b->GetValue().n; \
-	if (n2 != (int)n2) error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer"); \
-	\
-	Value* a = pop(); \
-	float n1 = a->GetValue().n; \
-	if (n1 != (int)n1) error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer"); \
-	\
-	push(NewObject((float)((int) n1 op (int)n2)));\
-}
-
-
-#define DECLARE_NONE_VAR(type, initval) {\
-	uint8_t index = chunk->advance();\
-	std::string identifier = GetConstantStr(index); \
-\
-	type* b = NewObject(initval); \
-	b->SetAsNone(); \
-	AddGlobal(identifier, b); \
+	Value *b = pop(); \
+	Value *a = pop(); \
+	if (IsIntegerValue(b) && IsIntegerValue(a)){\
+		\
+		int n1 = ((NumValue *)a)->GetValue(); \
+		int n2 = ((NumValue *)b)->GetValue(); \
+		push(NewObject((float)(n1 op n2))); \
+	} else {\
+		error(TYPE_ERROR, "Can't perform this operation on a non-integer");\
+	}\
 }
 
 	uint8_t op = chunk->advance();
@@ -87,6 +90,13 @@ void Interpreter::RunCommand() {
 			break; 
 		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
+		
+
+		case OP_NONE: {
+			push(NewObject(nullptr));
+			break;
+		}
+
 		case OP_TRUE: {
 			push(NewObject(true));
 			break;
@@ -99,8 +109,14 @@ void Interpreter::RunCommand() {
 		case OP_NEGATE: {
 			Value *a = pop();
 
-			float n = a->GetValue().n;
-			push(new NumValue(-n));
+			if (a->GetType() == Value::NUM_T) {
+				float n = ((NumValue*)a)->GetValue();
+				push(new NumValue(-n));
+			}
+			else {
+				error(TYPE_ERROR, "Negating a non-number type");
+			}
+			
 			break;
 		}
 
@@ -109,13 +125,13 @@ void Interpreter::RunCommand() {
 			Value::datatype t = a->GetType();
 			switch (t) {
 				case Value::NUM_T: {
-					float n = a->GetValue().n;
+					float n = ((NumValue*)a)->GetValue();
 					if (n / 1 == n)	push(new NumValue(~(int)n));
 					else error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer");
 					break;
 				}
 				case Value::BOOL_T: {
-					bool b = a->GetValue().b;
+					bool b = ((BoolValue*)a)->GetValue();
 					push(NewObject(!b));
 					break;
 				}
@@ -135,9 +151,9 @@ void Interpreter::RunCommand() {
 		case OP_SHIFT_LEFT:		BINARY_BIT_OP(<<);	break;
 		case OP_SHIFT_RIGHT:	BINARY_BIT_OP(>>);	break;
 
-		case OP_EQUALS:		BINARY_BOOL_OP(== ); break;
-		case OP_LESS:		BINARY_BOOL_OP(<); break;
-		case OP_GREATER:	BINARY_BOOL_OP(>); break;
+		case OP_EQUALS:		BINARY_COMP_OP(==); break;
+		case OP_LESS:		BINARY_COMP_OP(<); break;
+		case OP_GREATER:	BINARY_COMP_OP(>); break;
 
 		case OP_DEFINE_GLOBAL: {
 			uint8_t IdIndex = chunk->advance();
@@ -147,10 +163,6 @@ void Interpreter::RunCommand() {
 			AddGlobal(identifier, v);
 			break;
 		}
-
-		case OP_DECLARE_GLOBAL_BOOL:	DECLARE_NONE_VAR(BoolValue, false);				break;
-		case OP_DECLARE_GLOBAL_NUM:		DECLARE_NONE_VAR(NumValue, (float)0);			break;
-		case OP_DECLARE_GLOBAL_STR:		DECLARE_NONE_VAR(StrValue, (std::string&)"");	break;
 
 		case OP_SET_GLOBAL: {
 			uint8_t IdIndex = chunk->advance();
@@ -200,8 +212,6 @@ Value *Interpreter::peek(int depth) {
 	return this->stack.stk[stack.count - 1 - depth];
 }
 
-
-
 NumValue *Interpreter::NewObject(float f) {
 	NumValue* res = new NumValue(f);
 	res->next = objects;
@@ -223,9 +233,18 @@ StrValue* Interpreter::NewObject(std::string& s) {
 	return res;
 }
 
+Value* Interpreter::NewObject(nullptr_t p) {
+	Value* res = new Value(); // 'None' type
+	res->next = objects;
+	objects = res;
+	return res;
+}
+
+
+
 std::string Interpreter::GetConstantStr(uint8_t index) {
-	std::string s(chunk->ReadConstant(index)->GetValue().s);
-	return s;
+	Value* v = chunk->ReadConstant(index);
+	return ((StrValue*)v)->GetValue();
 }
 
 

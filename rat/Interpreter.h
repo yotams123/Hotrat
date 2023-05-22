@@ -40,6 +40,7 @@ private:
 	BoolValue *NewObject(bool b);
 	NumValue *NewObject(float f);
 	StrValue* NewObject(std::string& s);
+	Value* NewObject(nullptr_t p);
 
 	std::string GetConstantStr(uint8_t index);
 	float GetConstantNum(uint8_t index);

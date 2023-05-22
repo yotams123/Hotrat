@@ -31,7 +31,7 @@ public:
 
 private:
 	std::vector<Token> tokens;
-	std::vector<Token>::iterator CurrentToken;
+	int CurrentTokenOffset;
 	bool HadError;
 
 	static enum {
@@ -76,7 +76,7 @@ private:
 	bool match(TokenType type);
 	void consume(TokenType type, std::string ErrorMsg);
 	Token Current();
-	Token LookBack(int distance);
+	Token peek(signed distance);
 
 	// bytecode
 	void EmitByte(uint8_t byte);

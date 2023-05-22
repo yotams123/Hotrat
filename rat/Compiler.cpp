@@ -2,7 +2,7 @@
 
 Compiler::Compiler(std::vector<Token>& tokens) {
 	this->tokens = tokens;
-	CurrentToken = this->tokens.begin();
+	CurrentTokenOffset = 0;
 	
 	HadError = false;
 
@@ -44,8 +44,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
 	RuleTable[TOKEN_NEWLINE] = { &Compiler::literal, nullptr, PREC_END };
 
-	RuleTable[NUM_KW] = { &Compiler::declaration, nullptr, PREC_NONE };
-	RuleTable[BOOL] = { &Compiler::declaration, nullptr, PREC_NONE };
+	RuleTable[RAT] = { &Compiler::declaration, nullptr, PREC_NONE };
 
 	RuleTable[IDENTIFIER] = { &Compiler::variable, nullptr, PREC_LITERAL };
 	CurrentChunk = new Chunk();
@@ -76,7 +75,7 @@ Chunk* Compiler::Compile() {
 
 void Compiler::error(int e, std::string msg) {
 	int line = CountLines();
-	std::cout << "[Compilation error in line " << line << ", at '" << CurrentToken->GetLexeme() 
+	std::cout << "[Compilation error in line " << line << ", at '" << Current().GetLexeme()
 		<< "' ]: " << msg << "\n";
 	HadError = true;
 	throw e;
@@ -91,22 +90,22 @@ void Compiler::synchronize() {
 
 int Compiler::CountLines() {
 	int lines = 1;
-	std::vector<Token>::iterator i = this->tokens.begin();
-	while (i != CurrentToken) {
-		if (i->GetType() == TOKEN_NEWLINE) lines++;
+	int i = 0;
+	while (i != CurrentTokenOffset) {
+		if (tokens[i].GetType() == TOKEN_NEWLINE) lines++;
 		i++;
 	}
 	return lines;
 }
 
 void Compiler::literal() {
-	TokenType type = CurrentToken->GetType();
+	TokenType type = Current().GetType();
 
 	switch (type)
 	{
 		case STRING_LITERAL:							break;
 		case NUM_LITERAL: {
-			uint8_t index = CurrentChunk->AddConstant(*CurrentToken);
+			uint8_t index = CurrentChunk->AddConstant(Current());
 			if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
 			EmitBytes(OP_CONSTANT, index);
 			break;
@@ -194,11 +193,9 @@ void Compiler::expression(){
 }
 
 void Compiler::declaration() {
-	Token kw = Current();
+	Token kw = advance();
 	switch (kw.GetType()) {
-		
-		case NUM_KW:
-		case BOOL: {
+		case RAT: {
 			VarDeclaration();
 			break;
 		}
@@ -206,38 +203,16 @@ void Compiler::declaration() {
 }
 
 void Compiler::VarDeclaration() {
-	Token DataType = advance();
-	Token Name = advance();
-
-	switch (DataType.GetType())
-	{
-		case NUM_KW: {
-			uint8_t IdIndex = CurrentChunk->AddConstant(Name);
-			if (match(EQUALS)) {
-				advance();
-				expression();
-				EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
-			}
-			else {
-				EmitBytes(OP_DECLARE_GLOBAL_NUM, IdIndex);
-			}
-			break;
-		}
-		case BOOL: {
-			uint8_t IdIndex = CurrentChunk->AddConstant(Name);
-			if (match(EQUALS)) {
-				advance();
-				expression();
-				EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
-			}
-			else {
-				EmitBytes(OP_DECLARE_GLOBAL_BOOL, IdIndex);
-			}
-			break;
-		}
-		default:
-			break;
+	Token identifier = advance();
+	uint8_t IdIndex = CurrentChunk->AddConstant(identifier);
+	if (match(EQUALS)) {
+		advance();
+		expression();
 	}
+	else {
+		EmitByte(OP_NONE);
+	}
+	EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
 }
 
 Compiler::ParseRule& Compiler::GetRule(TokenType type) {
@@ -245,7 +220,9 @@ Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
-	ParseRule rule = GetRule(CurrentToken->GetType());
+	while (Current().GetType() == TOKEN_NEWLINE) literal();
+
+	ParseRule rule = GetRule(Current().GetType());
 	ParseFunction PrefixRule = rule.prefix;
 
 	if (PrefixRule == nullptr) {
@@ -254,8 +231,13 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	}
 	(this->*PrefixRule)();
 
-	while (precedence <= GetRule(CurrentToken->GetType()).precedence) {
-		rule = GetRule(CurrentToken->GetType());
+	while (precedence <= GetRule(Current().GetType()).precedence) {
+		while (Current().GetType() == TOKEN_NEWLINE) {
+			literal();
+			continue;
+		}
+
+		rule = GetRule(Current().GetType());
 		ParseFunction InfixRule = rule.infix;
 		if (InfixRule == nullptr) {
 			error(UNEXPECTED_TOKEN, "Expected expression");
@@ -267,25 +249,19 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 
 
 Token Compiler::advance() {
-	return *(CurrentToken++);
+	return tokens[CurrentTokenOffset++];
 }
 
 Token Compiler::Current() {
-	return *(CurrentToken);
+	return tokens[CurrentTokenOffset];
 }
 
-Token Compiler::LookBack(int distance) {
-	const int d = distance;
-	Token t = Token(TOKEN_ERROR, "");
-	do {
-		t = *(--CurrentToken);
-	} while (--distance > 0);
-	for (int i = 0; i < d; i++) CurrentToken++; // resetting the iterator
-	return t;
+Token Compiler::peek(int distance) {
+	return tokens[CurrentTokenOffset + distance];
 }
 
 bool Compiler::match(TokenType type) {
-	return (CurrentToken)->GetType() == type;
+	return Current().GetType() == type;
 }
 
 void Compiler::consume(TokenType type, std::string ErrorMsg) {
