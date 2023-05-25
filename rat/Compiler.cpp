@@ -11,43 +11,44 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	}
 
 	// add actual values to table
-	RuleTable[NUM_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[NUM_LITERAL] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[STRING_LITERAL] = { &Compiler::literal, nullptr, PREC_LITERAL };
 	
-	RuleTable[TRUE] = { &Compiler::literal, nullptr, PREC_LITERAL };
-	RuleTable[FALSE] = { &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[TRUE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[FALSE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 
-	RuleTable[PLUS] = { nullptr, &Compiler::binary, PREC_TERM };
-	RuleTable[MINUS] = { &Compiler::unary, &Compiler::binary, PREC_TERM };
+	RuleTable[PLUS] =	{ nullptr,			&Compiler::binary, PREC_TERM };
+	RuleTable[MINUS] =	{ &Compiler::unary, &Compiler::binary, PREC_TERM };
 
-	RuleTable[STAR] = { nullptr, &Compiler::binary, PREC_FACTOR };
-	RuleTable[SLASH] = { nullptr, &Compiler::binary, PREC_FACTOR };
+	RuleTable[STAR] =	{ nullptr, &Compiler::binary, PREC_FACTOR };
+	RuleTable[SLASH] =	{ nullptr, &Compiler::binary, PREC_FACTOR };
 
-	RuleTable[SHIFT_LEFT] = { nullptr, &Compiler::binary, PREC_BIT };
-	RuleTable[SHIFT_RIGHT] = { nullptr, &Compiler::binary, PREC_BIT };
+	RuleTable[SHIFT_LEFT] =		{ nullptr, &Compiler::binary, PREC_BIT };
+	RuleTable[SHIFT_RIGHT] =	{ nullptr, &Compiler::binary, PREC_BIT };
 
-	RuleTable[BIT_AND] = { nullptr, &Compiler::binary, PREC_BIT };
-	RuleTable[BIT_OR] = { nullptr, &Compiler::binary, PREC_BIT };
-	RuleTable[BIT_XOR] = { nullptr, &Compiler::binary, PREC_BIT };
-	RuleTable[BIT_NOT] = { &Compiler::unary, nullptr, PREC_BIT };
+	RuleTable[BIT_AND] =	{ nullptr,			&Compiler::binary,	PREC_BIT };
+	RuleTable[BIT_OR] =		{ nullptr,			&Compiler::binary,	PREC_BIT };
+	RuleTable[BIT_XOR] =	{ nullptr,			&Compiler::binary,	PREC_BIT };
+	RuleTable[BIT_NOT] =	{ &Compiler::unary, nullptr,			PREC_BIT };
 
-	RuleTable[DOUBLE_EQUALS] = { nullptr, &Compiler::binary, PREC_COMPARE };
-	RuleTable[BANG_EQUALS] = { nullptr, &Compiler::binary, PREC_COMPARE };
-	RuleTable[GREATER_EQUAL] = { nullptr, &Compiler::binary, PREC_COMPARE };
-	RuleTable[LESS_EQUAL] = { nullptr, &Compiler::binary, PREC_COMPARE };
-	RuleTable[GREATER] = { nullptr, &Compiler::binary, PREC_COMPARE };
-	RuleTable[LESS] = { nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[DOUBLE_EQUALS] =	{ nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[BANG_EQUALS] =	{ nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[GREATER_EQUAL] =	{ nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[LESS_EQUAL] =		{ nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[GREATER] =		{ nullptr, &Compiler::binary, PREC_COMPARE };
+	RuleTable[LESS] =			{ nullptr, &Compiler::binary, PREC_COMPARE };
 
 	RuleTable[LEFT_PAREN] = { &Compiler::grouping, nullptr, PREC_NONE };
 
 	RuleTable[BANG] = { &Compiler::unary, nullptr, PREC_UNARY };
 
-	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
-	RuleTable[TOKEN_NEWLINE] = { nullptr, nullptr, PREC_END };
+	RuleTable[TOKEN_EOF] =		{ nullptr, nullptr, PREC_END };
+	RuleTable[TOKEN_NEWLINE] =	{ nullptr, nullptr, PREC_END };
 
 	RuleTable[RAT] = { &Compiler::declaration, nullptr, PREC_NONE };
 
 	RuleTable[IDENTIFIER] = { &Compiler::variable, nullptr, PREC_LITERAL };
+
 	CurrentChunk = new Chunk();
 }
 
@@ -133,8 +134,16 @@ void Compiler::variable() {
 		advance();
 		expression();
 		EmitBytes(OP_SET_GLOBAL, index);
-	}
-	else {
+
+	} else if (match(PLUS_PLUS)) {
+		EmitBytes(OP_INC, index);
+		advance();
+	
+	} else if (match(MINUS_MINUS)) {
+		EmitBytes(OP_DEC, index);
+		advance();
+	
+	} else {
 		EmitBytes(OP_GET_GLOBAL, index);
 	}
 }

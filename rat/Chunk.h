@@ -38,6 +38,9 @@ typedef enum {
 	OP_SET_GLOBAL,
 	OP_GET_GLOBAL,
 
+	OP_INC,
+	OP_DEC,
+
 	OP_NEGATE,
 } Opcode;
 

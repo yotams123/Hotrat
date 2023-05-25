@@ -86,7 +86,7 @@ void Interpreter::RunCommand() {
 	switch (op)
 	{
 		case OP_NEWLINE: {
-			if (stack.count != 0) std::cout << pop()->ToString() << "\n\n\n";
+			if (stack.count > 0) std::cout << pop()->ToString() << "\n\n\n";
 			break; 
 		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
@@ -139,7 +139,23 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
-		case OP_ADD:			BINARY_NUM_OP(+);	break;
+		case OP_ADD: {
+			switch (peek(0)->GetType()) {
+				case Value::NUM_T:	BINARY_NUM_OP(+);	break;
+				case Value::STRING_T: {
+					if (peek(1)->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
+					Value* b = pop();
+					Value* a = pop();
+
+					std::string s1 = ((StrValue*)a)->GetValue();
+					std::string s2 = ((StrValue*)b)->GetValue();
+					push(NewObject((std::string&)(s1 + s2)));
+					break;
+				}
+			}
+
+			break;
+		}
 		case OP_SUB:			BINARY_NUM_OP(-);	break;
 		case OP_MULTIPLY: 		BINARY_NUM_OP(*);	break;
 		case OP_DIVIDE:			BINARY_NUM_OP(/);	break;
@@ -178,6 +194,34 @@ void Interpreter::RunCommand() {
 			std::string identifier = GetConstantStr(IdIndex);
 
 			push(globals[identifier]);
+			break;
+		}
+
+		case OP_INC: {
+			uint8_t IdIndex = chunk->advance();
+			std::string identifier = GetConstantStr(IdIndex);
+			Value* var = globals[identifier];
+
+			if (var->GetType() != Value::NUM_T) {
+				error(TYPE_ERROR, "Can't increment a non-number value");
+			}
+			NumValue* num = (NumValue*)var;
+			num->SetValue(num->GetValue() + 1);
+
+			break;
+		}
+		
+		case OP_DEC: {
+			uint8_t IdIndex = chunk->advance();
+			std::string identifier = GetConstantStr(IdIndex);
+			Value* var = globals[identifier];
+
+			if (var->GetType() != Value::NUM_T) {
+				error(TYPE_ERROR, "Can't decrement a non-number value");
+			}
+			NumValue* num = (NumValue*)var;
+			num->SetValue(num->GetValue() - 1);
+
 			break;
 		}
 

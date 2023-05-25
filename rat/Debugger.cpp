@@ -81,7 +81,12 @@ void Debugger::DisassembleInstruction() {
 		case OP_SET_GLOBAL:			ConstantOperation("OP_SET_GLOBAL");		break;
 		case OP_GET_GLOBAL:			ConstantOperation("OP_GET_GLOBAL");		break;
 
+		case OP_INC:				ConstantOperation("OP_INC");			break;
+		case OP_DEC:				ConstantOperation("OP_DEC");			break;
 
-		default:	std::cout << "Unrecognized instruction" << instruction << "\n";
+		default: {
+			std::cout << "Unrecognized instruction" << instruction << "\n";
+			offset++;
+		}
 	}
 }
