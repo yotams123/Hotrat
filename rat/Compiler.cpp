@@ -43,7 +43,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[BANG] = { &Compiler::unary, nullptr, PREC_UNARY };
 
 	RuleTable[TOKEN_EOF] = { nullptr, nullptr, PREC_END };
-	RuleTable[TOKEN_NEWLINE] = { &Compiler::literal, nullptr, PREC_END };
+	RuleTable[TOKEN_NEWLINE] = { nullptr, nullptr, PREC_END };
 
 	RuleTable[RAT] = { &Compiler::declaration, nullptr, PREC_NONE };
 
@@ -65,7 +65,7 @@ Chunk* Compiler::Compile() {
 				synchronize();
 			}
 		}
-		if (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
+		while (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
 	}
 	if (HadError) return nullptr;
 
@@ -76,8 +76,10 @@ Chunk* Compiler::Compile() {
 
 void Compiler::error(int e, std::string msg) {
 	int line = CountLines();
-	std::cout << "[Compilation error in line " << line << ", at '" << Current().GetLexeme()
-		<< "' ]: " << msg << "\n";
+	std::string lexeme =  "'" + Current().GetLexeme() + "'";
+	if (lexeme == "'\n'") lexeme = "end";
+
+	std::cout << "[Compilation error in line " << line << ", at " << lexeme	<< " ]: " << msg << "\n";
 	HadError = true;
 	throw e;
 }
@@ -160,27 +162,27 @@ void Compiler::binary() {
 	ParsePrecedence(ToParse);
 	switch (op.GetType())
 	{
-	case PLUS:			EmitByte(OP_ADD);			break;
-	case MINUS:			EmitByte(OP_SUB);			break;
-	case STAR:			EmitByte(OP_MULTIPLY);		break;
-	case SLASH:			EmitByte(OP_DIVIDE);		break;
+		case PLUS:			EmitByte(OP_ADD);			break;
+		case MINUS:			EmitByte(OP_SUB);			break;
+		case STAR:			EmitByte(OP_MULTIPLY);		break;
+		case SLASH:			EmitByte(OP_DIVIDE);		break;
 
-	case SHIFT_LEFT:	EmitByte(OP_SHIFT_LEFT);	break;	
-	case SHIFT_RIGHT:	EmitByte(OP_SHIFT_RIGHT);	break;
+		case SHIFT_LEFT:	EmitByte(OP_SHIFT_LEFT);	break;	
+		case SHIFT_RIGHT:	EmitByte(OP_SHIFT_RIGHT);	break;
 
-	case BIT_AND:		EmitByte(OP_BIT_AND);		break;
-	case BIT_OR:		EmitByte(OP_BIT_OR);		break;
-	case BIT_XOR:		EmitByte(OP_BIT_XOR);		break;
+		case BIT_AND:		EmitByte(OP_BIT_AND);		break;
+		case BIT_OR:		EmitByte(OP_BIT_OR);		break;
+		case BIT_XOR:		EmitByte(OP_BIT_XOR);		break;
 
-	case DOUBLE_EQUALS:	EmitByte(OP_EQUALS);			break;
-	case BANG_EQUALS:	EmitBytes(OP_EQUALS, OP_NOT);	break;
-	case GREATER:		EmitByte(OP_GREATER);			break;
-	case GREATER_EQUAL:	EmitBytes(OP_LESS, OP_NOT);		break;
-	case LESS:			EmitByte(OP_LESS);				break;
-	case LESS_EQUAL:	EmitBytes(OP_GREATER, OP_NOT);	break;
+		case DOUBLE_EQUALS:	EmitByte(OP_EQUALS);			break;
+		case BANG_EQUALS:	EmitBytes(OP_EQUALS, OP_NOT);	break;
+		case GREATER:		EmitByte(OP_GREATER);			break;
+		case GREATER_EQUAL:	EmitBytes(OP_LESS, OP_NOT);		break;
+		case LESS:			EmitByte(OP_LESS);				break;
+		case LESS_EQUAL:	EmitBytes(OP_GREATER, OP_NOT);	break;
 
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
@@ -222,8 +224,6 @@ Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
-	while (Current().GetType() == TOKEN_NEWLINE) literal();
-
 	ParseRule rule = GetRule(Current().GetType());
 	ParseFunction PrefixRule = rule.prefix;
 
@@ -234,10 +234,6 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	(this->*PrefixRule)();
 
 	while (precedence <= GetRule(Current().GetType()).precedence) {
-		while (Current().GetType() == TOKEN_NEWLINE) {
-			literal();
-			continue;
-		}
 
 		rule = GetRule(Current().GetType());
 		ParseFunction InfixRule = rule.infix;
