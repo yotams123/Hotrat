@@ -67,8 +67,23 @@ void Chunk::SyncIP() {
 int Chunk::CountLines() {
 	int line = 1;
 	std::vector<uint8_t>::iterator op = code.begin();
-	for (; op < ip; op++) {
-		if (*op == OP_NEWLINE) line++;
+	while (op < ip) {
+		switch (*op) {
+			case OP_CONSTANT:
+			case OP_DEFINE_GLOBAL:
+			case OP_GET_GLOBAL:
+			case OP_SET_GLOBAL:
+
+			case OP_INC:
+			case OP_DEC: {
+				op++;
+				op++;
+				break;
+			}
+			
+			case OP_NEWLINE:	line++;
+			default:	op++;
+		}
 	}
 	return line;
 }

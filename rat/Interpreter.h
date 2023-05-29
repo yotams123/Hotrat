@@ -33,7 +33,8 @@ private:
 		UNRECOGNIZED_OPCODE = 201,
 		STACK_UNDERFLOW,
 		STACK_OVERFLOW,
-		TYPE_ERROR
+		TYPE_ERROR,
+		UNDEFINED_RAT,
 	} ExitCode;
 
 
@@ -51,6 +52,7 @@ private:
 
 	std::unordered_map<std::string, Value*> globals;
 	void AddGlobal(std::string&, Value*);
+	Value* FindGlobal();
 
 public:
 	Interpreter(Chunk*);

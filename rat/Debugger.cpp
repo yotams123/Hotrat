@@ -50,8 +50,7 @@ void Debugger::DisassembleInstruction() {
 			SimpleOperation("OP_NEWLINE");
 			break;
 		}
-		
-		case OP_CONSTANT:	ConstantOperation("OP_CONSTANT");	break;
+	
 		case OP_RETURN:		SimpleOperation("OP_RETURN");		break;
 	
 		case OP_ADD:		SimpleOperation("OP_ADD");		break;
@@ -80,6 +79,7 @@ void Debugger::DisassembleInstruction() {
 		case OP_DEFINE_GLOBAL:		ConstantOperation("OP_DEFINE_GLOBAL");	break;
 		case OP_SET_GLOBAL:			ConstantOperation("OP_SET_GLOBAL");		break;
 		case OP_GET_GLOBAL:			ConstantOperation("OP_GET_GLOBAL");		break;
+		case OP_CONSTANT:			ConstantOperation("OP_CONSTANT");		break;
 
 		case OP_INC:				ConstantOperation("OP_INC");			break;
 		case OP_DEC:				ConstantOperation("OP_DEC");			break;

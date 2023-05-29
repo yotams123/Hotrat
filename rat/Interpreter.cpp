@@ -152,6 +152,8 @@ void Interpreter::RunCommand() {
 					push(NewObject((std::string&)(s1 + s2)));
 					break;
 				}
+				default:
+					error(TYPE_ERROR, "Can only use the '+' operator between two numbers or two strings");
 			}
 
 			break;
@@ -185,22 +187,22 @@ void Interpreter::RunCommand() {
 			std::string identifier = GetConstantStr(IdIndex);
 
 			Value* v = pop();
+
+			if (globals[identifier] == nullptr) error(UNDEFINED_RAT, "Setting value to an undefined rat");
+
 			globals[identifier] = v;
 			break;
 		}
 						  
 		case OP_GET_GLOBAL: {
-			uint8_t IdIndex = chunk->advance();
-			std::string identifier = GetConstantStr(IdIndex);
+			Value* var = FindGlobal();
 
-			push(globals[identifier]);
+			push(var);
 			break;
 		}
 
 		case OP_INC: {
-			uint8_t IdIndex = chunk->advance();
-			std::string identifier = GetConstantStr(IdIndex);
-			Value* var = globals[identifier];
+			Value* var = FindGlobal();
 
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't increment a non-number value");
@@ -212,9 +214,7 @@ void Interpreter::RunCommand() {
 		}
 		
 		case OP_DEC: {
-			uint8_t IdIndex = chunk->advance();
-			std::string identifier = GetConstantStr(IdIndex);
-			Value* var = globals[identifier];
+			Value* var = FindGlobal();
 
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't decrement a non-number value");
@@ -292,6 +292,15 @@ std::string Interpreter::GetConstantStr(uint8_t index) {
 }
 
 
+Value* Interpreter::FindGlobal() {
+	uint8_t IdIndex = chunk->advance();
+	std::string identifier = GetConstantStr(IdIndex);
+	Value* var = globals[identifier];
+
+	if (var == nullptr) error(UNDEFINED_RAT, "Undefined rat " + identifier);
+
+	return var;
+}
 
 void Interpreter::AddGlobal(std::string& name, Value* value) {
 	this->globals.insert({ name, value });
