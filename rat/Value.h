@@ -63,4 +63,6 @@ public:
 
 	std::string GetValue();
 	void SetValue(std::string& s);
+
+	std::string operator+(StrValue next);
 };

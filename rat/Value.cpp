@@ -86,3 +86,7 @@ std::string StrValue::GetValue() {
 void StrValue::SetValue(std::string& s) {
 	this->StrRep = s;
 }
+
+std::string StrValue::operator+(StrValue next) {
+	return this->StrRep + next.GetValue();
+}

@@ -1,5 +1,7 @@
 #include "Debugger.h"
 
+#define OPCODE_NAME_LEN 24
+
 Debugger::Debugger(Chunk *chunk, std::string name){
 	this->chunk = chunk;
 	
@@ -15,13 +17,13 @@ Debugger::~Debugger() {
 void Debugger::ConstantOperation(const std::string& name) {
 	uint8_t constant = code[offset + 1];
 
-	std::cout << std::setw(16) << std::left << name << std::setw(4) << std::left << std::to_string(constant) << "\n";
+	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left << std::to_string(constant) << "\n";
 
 	offset += 2;
 }
 
 void Debugger::SimpleOperation(const std::string& name) {
-	std::cout << std::setw(16) << std::left << name << "\n";
+	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << "\t\n";
 	offset++;
 }
 
@@ -84,8 +86,19 @@ void Debugger::DisassembleInstruction() {
 		case OP_INC:				ConstantOperation("OP_INC");			break;
 		case OP_DEC:				ConstantOperation("OP_DEC");			break;
 
+		case OP_ADD_ASSIGN:			ConstantOperation("OP_ADD_ASSIGN");			break;
+		case OP_SUB_ASSIGN:			ConstantOperation("OP_SUB_ASSIGN");			break;
+		case OP_MULTIPLY_ASSIGN:	ConstantOperation("OP_MULTIPLY_ASSIGN");	break;
+		case OP_DIVIDE_ASSIGN:		ConstantOperation("OP_DIVIDE_ASSIGN");		break;
+
+		case OP_BIT_AND_ASSIGN:		ConstantOperation("OP_BIT_AND_ASSIGN");		break;
+		case OP_BIT_OR_ASSIGN:		ConstantOperation("OP_BIT_OR_ASSIGN");		break;
+		case OP_BIT_XOR_ASSIGN:		ConstantOperation("OP_BIT_XOR_ASSIGN");		break;
+		case OP_SHIFTL_ASSIGN:		ConstantOperation("OP_SHIFTL_ASSIGN");		break;
+		case OP_SHIFTR_ASSIGN:		ConstantOperation("OP_SHIFTR_ASSIGN");		break;
+
 		default: {
-			std::cout << "Unrecognized instruction" << instruction << "\n";
+			std::cout << "Unrecognized instruction" << instruction << "\t\n";
 			offset++;
 		}
 	}

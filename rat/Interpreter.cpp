@@ -3,7 +3,7 @@
 bool IsIntegerValue(Value *f) {
 	if (f->GetType() != Value::NUM_T) return false;
 	float n = ((NumValue*)f)->GetValue();
-	if (n / 1 == n) return true;
+	if (n == (int)n) return true;
 	return false;
 }
 
@@ -82,6 +82,37 @@ void Interpreter::RunCommand() {
 	}\
 }
 
+
+#define BINARY_ASSIGN_OP(op, IsPlus) {\
+\
+	Value *a = FindGlobal(); \
+	Value *b = pop(); \
+	if (a->GetType() == Value::NUM_T && b->GetType() == Value::NUM_T){\
+		NumValue *na = (NumValue *)a;\
+		na->SetValue(na->GetValue() op ((NumValue *)b)->GetValue());\
+	} else {\
+		std::string msg = "Can only perform this operation on two numbers"; \
+		if (IsPlus) msg += " or two strings";\
+		\
+		error(TYPE_ERROR, msg);\
+	}\
+}
+
+#define BINARY_BIT_ASSIGN_OP(op) {\
+\
+	Value *a = FindGlobal(); \
+	Value *b = pop(); \
+	\
+	if (IsIntegerValue(a) && IsIntegerValue(b) ){\
+		NumValue *num1 = (NumValue *)a; \
+		NumValue *num2 = (NumValue *)b; \
+		\
+		num1->SetValue((int)(num1->GetValue()) op (int)(num2->GetValue()));\
+	} else {\
+		error(TYPE_ERROR, "Can't perform bitwise operations on non-integer types");\
+	}\
+}
+
 	uint8_t op = chunk->advance();
 	switch (op)
 	{
@@ -144,12 +175,10 @@ void Interpreter::RunCommand() {
 				case Value::NUM_T:	BINARY_NUM_OP(+);	break;
 				case Value::STRING_T: {
 					if (peek(1)->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
-					Value* b = pop();
-					Value* a = pop();
+					StrValue* b = (StrValue *)pop();
+					StrValue* a = (StrValue *)pop();
 
-					std::string s1 = ((StrValue*)a)->GetValue();
-					std::string s2 = ((StrValue*)b)->GetValue();
-					push(NewObject((std::string&)(s1 + s2)));
+					push(NewObject((std::string&)(*a + *b)));
 					break;
 				}
 				default:
@@ -225,6 +254,34 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
+		case OP_ADD_ASSIGN: {
+			switch (peek(0)->GetType()) {
+				case Value::STRING_T: {
+					StrValue* b = (StrValue*)pop();
+
+					Value* va = FindGlobal();
+					if (va->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
+
+					StrValue* a = (StrValue*)va;
+					a->SetValue((std::string&)(*a + *b));
+					break;
+				}
+
+				default: BINARY_ASSIGN_OP(+, true);
+			}
+			break;
+		}
+
+		case OP_SUB_ASSIGN:			BINARY_ASSIGN_OP(-, false);	break;
+		case OP_MULTIPLY_ASSIGN:	BINARY_ASSIGN_OP(*, false); break;
+		case OP_DIVIDE_ASSIGN:		BINARY_ASSIGN_OP(/, false); break;
+
+		case OP_BIT_AND_ASSIGN:		BINARY_BIT_ASSIGN_OP(&);	break;
+		case OP_BIT_OR_ASSIGN:		BINARY_BIT_ASSIGN_OP(|);	break;
+		case OP_BIT_XOR_ASSIGN:		BINARY_BIT_ASSIGN_OP(^);	break;
+		case OP_SHIFTL_ASSIGN:		BINARY_BIT_ASSIGN_OP(<<);	break;
+		case OP_SHIFTR_ASSIGN:		BINARY_BIT_ASSIGN_OP(>>);	break;
+
 		default:
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + op);
 			break;
@@ -236,7 +293,7 @@ void Interpreter::RunCommand() {
 }
 
 Value *Interpreter::pop() {
-	if (stack.count <= 0) {
+	if (this->stack.count <= 0) {
 		error(STACK_UNDERFLOW, "Popping from empty stack");
 	}
 
@@ -258,44 +315,42 @@ Value *Interpreter::peek(int depth) {
 
 NumValue *Interpreter::NewObject(float f) {
 	NumValue* res = new NumValue(f);
-	res->next = objects;
-	objects = res;
+	res->next = this->objects;
+	this->objects = res;
 	return res;
 }
 
 BoolValue* Interpreter::NewObject(bool b) {
 	BoolValue* res = new BoolValue(b);
-	res->next = objects;
-	objects = res;
+	res->next = this->objects;
+	this->objects = res;
 	return res;
 }
 
 StrValue* Interpreter::NewObject(std::string& s) {
 	StrValue* res = new StrValue(s);
-	res->next = objects;
-	objects = res;
+	res->next = this->objects;
+	this->objects = res;
 	return res;
 }
 
 Value* Interpreter::NewObject(nullptr_t p) {
 	Value* res = new Value(); // 'None' type
-	res->next = objects;
-	objects = res;
+	res->next = this->objects;
+	this->objects = res;
 	return res;
 }
 
-
-
 std::string Interpreter::GetConstantStr(uint8_t index) {
-	Value* v = chunk->ReadConstant(index);
+	Value* v = this->chunk->ReadConstant(index);
 	return ((StrValue*)v)->GetValue();
 }
 
 
 Value* Interpreter::FindGlobal() {
-	uint8_t IdIndex = chunk->advance();
+	uint8_t IdIndex = this->chunk->advance();
 	std::string identifier = GetConstantStr(IdIndex);
-	Value* var = globals[identifier];
+	Value* var = this->globals[identifier];
 
 	if (var == nullptr) error(UNDEFINED_RAT, "Undefined rat " + identifier);
 
@@ -308,15 +363,15 @@ void Interpreter::AddGlobal(std::string& name, Value* value) {
 
 std::string Interpreter::TraceStack(int CodeOffset) {
 	std::string trace = "";
-	for (uint8_t i = 0; i < stack.count; i++) {
-		trace += ("[ " + stack.stk[i]->ToString() + "]\t");
+	for (uint8_t i = 0; i < this->stack.count; i++) {
+		trace += ("[ " + this->stack.stk[i]->ToString() + "]\t");
 	}
 	trace += '\n';
 	return (std::to_string(CodeOffset) + "\t" + trace);
 }
 
 void Interpreter::error(int e, std::string msg) {
-	int line = chunk->CountLines();
+	int line = this->chunk->CountLines();
 	std::cerr << "[Runtime error in line " << line << "]: " << msg << "\n";
 	throw -e;
 }

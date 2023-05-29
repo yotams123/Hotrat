@@ -142,8 +142,58 @@ void Compiler::variable() {
 	} else if (match(MINUS_MINUS)) {
 		EmitBytes(OP_DEC, index);
 		advance();
-	
-	} else {
+
+	}
+	else if (match(PLUS_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_ADD_ASSIGN, index);
+
+	}
+	else if (match(MINUS_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_SUB_ASSIGN, index);
+
+	}
+	else if (match(STAR_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_MULTIPLY_ASSIGN, index);
+
+	} else if (match(SLASH_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_DIVIDE_ASSIGN, index);
+
+	} else if (match(BIT_AND_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_BIT_AND_ASSIGN, index);
+
+	} else if (match(BIT_OR_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_BIT_OR_ASSIGN, index);
+
+	} else if (match(BIT_XOR_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_BIT_XOR_ASSIGN, index);
+
+	} else if (match(SHIFT_LEFT_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_SHIFTL_ASSIGN, index);
+
+	}
+	else if (match(SHIFT_RIGHT_ASSIGN)) {
+		advance();
+		expression();
+		EmitBytes(OP_SHIFTR_ASSIGN, index);
+
+	}
+	else {
 		EmitBytes(OP_GET_GLOBAL, index);
 	}
 }
