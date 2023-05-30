@@ -1,6 +1,6 @@
 #include "Debugger.h"
 
-#define OPCODE_NAME_LEN 24
+#define OPCODE_NAME_LEN 32
 
 Debugger::Debugger(Chunk *chunk, std::string name){
 	this->chunk = chunk;
@@ -31,7 +31,9 @@ void Debugger::JumpOperation(const std::string& name) {
 	short distance = (short)((code[offset + 1] << 8));
 	distance += (short)(code[offset + 2] & 0xFF);
 
-	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left << std::to_string(distance) << "\n";
+	if (name == "OP_LOOP") distance *= -1;
+	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left << 
+		std::to_string(offset + 2) << "--> " << std::to_string(offset + 3 + distance) <<"\n";
 
 	offset += 3;
 }
@@ -62,8 +64,9 @@ void Debugger::DisassembleInstruction() {
 			break;
 		}
 	
-		case OP_RETURN:		SimpleOperation("OP_RETURN");		break;
-	
+		case OP_RETURN:		SimpleOperation("OP_RETURN");	break;
+		case OP_POP:		SimpleOperation("OP_POP");		break;
+
 		case OP_ADD:		SimpleOperation("OP_ADD");		break;
 		case OP_SUB:		SimpleOperation("OP_SUB");		break;
 		case OP_MULTIPLY:	SimpleOperation("OP_MULTIPLY"); break;
@@ -109,6 +112,7 @@ void Debugger::DisassembleInstruction() {
 		case OP_JUMP:				JumpOperation("OP_JUMP");			break;
 		case OP_JUMP_IF_TRUE:		JumpOperation("OP_JUMP_IF_TRUE");	break;
 		case OP_JUMP_IF_FALSE:		JumpOperation("OP_JUMP_IF_FALSE");	break;
+		case OP_LOOP:				JumpOperation("OP_LOOP");			break;
 
 		default: {
 			std::cout << "Unrecognized instruction" << instruction << "\t\n";

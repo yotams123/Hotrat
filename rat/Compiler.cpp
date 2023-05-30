@@ -17,6 +17,9 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[TRUE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[FALSE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 
+	RuleTable[AND] = { nullptr, &Compiler::binary, PREC_AND };
+	RuleTable[OR] = { nullptr, &Compiler::binary, PREC_OR };
+
 	RuleTable[PLUS] =	{ nullptr,			&Compiler::binary, PREC_TERM };
 	RuleTable[MINUS] =	{ &Compiler::unary, &Compiler::binary, PREC_TERM };
 
@@ -249,6 +252,14 @@ void Compiler::unary() {
 void Compiler::binary() {
 	Token op = advance();
 
+	short ConditionJump = -1;
+	if (op.GetType() == AND) {
+		ConditionJump = EmitJump(OP_JUMP_IF_FALSE); // no need to check second condition
+	}
+	else if (op.GetType() == OR) {
+		ConditionJump = EmitJump(OP_JUMP_IF_TRUE);  // no need to check second condition
+	}
+
 	ParseRule rule = GetRule(op.GetType());
 	Precedence ToParse = (Precedence)(rule.precedence + 1);
 
@@ -273,6 +284,11 @@ void Compiler::binary() {
 		case GREATER_EQUAL:	EmitBytes(OP_LESS, OP_NOT);		break;
 		case LESS:			EmitByte(OP_LESS);				break;
 		case LESS_EQUAL:	EmitBytes(OP_GREATER, OP_NOT);	break;
+
+		case AND:
+		case OR: {
+			PatchJump(ConditionJump);
+		}
 
 		default:
 			break;

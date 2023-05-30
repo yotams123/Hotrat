@@ -11,6 +11,7 @@ typedef enum {
 	OP_RETURN,
 
 	OP_CONSTANT,
+	OP_POP,
 
 	OP_NONE,
 	OP_TRUE,

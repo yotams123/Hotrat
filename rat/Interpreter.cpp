@@ -121,7 +121,7 @@ void Interpreter::RunCommand() {
 			break; 
 		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
-		
+		case OP_POP:		pop();
 
 		case OP_NONE: {
 			push(NewObject(nullptr));
@@ -286,7 +286,7 @@ void Interpreter::RunCommand() {
 			uint8_t JumpHighByte = this->chunk->advance();
 			uint8_t JumpLowByte = this->chunk->advance();
 
-			if (pop()->IsTruthy()) {
+			if (peek(0)->IsTruthy()) {
 				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
 				this->chunk->MoveIp(distance);
 			}
@@ -296,7 +296,7 @@ void Interpreter::RunCommand() {
 			uint8_t JumpHighByte = this->chunk->advance();
 			uint8_t JumpLowByte = this->chunk->advance();
 
-			if (!(pop()->IsTruthy())) {
+			if (!(peek(0)->IsTruthy())) {
 				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
 				this->chunk->MoveIp(distance);
 			}
