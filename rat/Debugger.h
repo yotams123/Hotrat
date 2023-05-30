@@ -19,6 +19,8 @@ private:
 
 	void ConstantOperation(const std::string& name);
 	void SimpleOperation(const std::string& name);
+	void JumpOperation(const std::string& name);
+	
 	void DisassembleInstruction();
 
 public:

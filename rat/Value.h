@@ -28,6 +28,8 @@ public:
 	datatype GetType();
 
 	std::string ToString();
+
+	bool IsTruthy();
 };
 
 class NumValue : public Value {

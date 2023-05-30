@@ -27,6 +27,15 @@ void Debugger::SimpleOperation(const std::string& name) {
 	offset++;
 }
 
+void Debugger::JumpOperation(const std::string& name) {
+	short distance = (short)((code[offset + 1] << 8));
+	distance += (short)(code[offset + 2] & 0xFF);
+
+	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left << std::to_string(distance) << "\n";
+
+	offset += 3;
+}
+
 void Debugger::DisassembleChunk() {
 	line = 1;
 	PrintLineNum = "1";
@@ -96,6 +105,10 @@ void Debugger::DisassembleInstruction() {
 		case OP_BIT_XOR_ASSIGN:		ConstantOperation("OP_BIT_XOR_ASSIGN");		break;
 		case OP_SHIFTL_ASSIGN:		ConstantOperation("OP_SHIFTL_ASSIGN");		break;
 		case OP_SHIFTR_ASSIGN:		ConstantOperation("OP_SHIFTR_ASSIGN");		break;
+
+		case OP_JUMP:				JumpOperation("OP_JUMP");			break;
+		case OP_JUMP_IF_TRUE:		JumpOperation("OP_JUMP_IF_TRUE");	break;
+		case OP_JUMP_IF_FALSE:		JumpOperation("OP_JUMP_IF_FALSE");	break;
 
 		default: {
 			std::cout << "Unrecognized instruction" << instruction << "\t\n";

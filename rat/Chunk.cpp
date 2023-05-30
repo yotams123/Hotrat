@@ -1,7 +1,7 @@
 #include "Chunk.h"
 
 Chunk::Chunk() {
-	ip = code.begin();
+	ip = 0;
 
 	constants = std::vector<Value*>();
 	enclosing = nullptr;
@@ -16,7 +16,7 @@ Chunk::~Chunk() {
 }
 
 uint8_t Chunk::advance() {
-	return *(ip++);
+	return code[ip++];
 }
 
 
@@ -53,22 +53,18 @@ void Chunk::Append(uint8_t byte1, uint8_t byte2) {
 }
 
 std::vector<uint8_t>& Chunk::GetCode() {
-	return code;
+	return this->code;
 }
 
 bool Chunk::IsAtEnd() {
-	return ip == code.end();
-}
-
-void Chunk::SyncIP() {
-	ip = code.begin();
+	return this->ip > (this->code.size() - 1);
 }
 
 int Chunk::CountLines() {
 	int line = 1;
-	std::vector<uint8_t>::iterator op = code.begin();
+	short op = 0;
 	while (op < ip) {
-		switch (*op) {
+		switch (this->code[op]) {
 			case OP_CONSTANT:
 			case OP_DEFINE_GLOBAL:
 			case OP_GET_GLOBAL:
@@ -77,7 +73,7 @@ int Chunk::CountLines() {
 			case OP_INC:
 			case OP_DEC: {
 				op++;
-				op++;
+				op++;  // skip over opcode and operand
 				break;
 			}
 			
@@ -88,6 +84,20 @@ int Chunk::CountLines() {
 	return line;
 }
 
-_int64 Chunk::GetOffset() {
-	return std::distance(code.begin(), ip);
+short Chunk::GetOffset() {
+	return this->ip;
+}
+
+short Chunk::GetSize() {
+	return this->code.size();
+}
+
+
+void Chunk::MoveIp(short distance) {
+	ip += distance;
+}
+
+void Chunk::PatchJump(short JumpIndex, short distance) {
+	this->code[JumpIndex - 1] = (uint8_t)((distance >> 8) & 0xFF);
+	this->code[JumpIndex] = (uint8_t)(distance & 0xFF);
 }

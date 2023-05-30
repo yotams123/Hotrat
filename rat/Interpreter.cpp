@@ -113,8 +113,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
-	uint8_t op = chunk->advance();
-	switch (op)
+	uint8_t opcode = chunk->advance();
+	switch (opcode)
 	{
 		case OP_NEWLINE: {
 			if (stack.count > 0) std::cout << pop()->ToString() << "\n\n\n";
@@ -282,8 +282,46 @@ void Interpreter::RunCommand() {
 		case OP_SHIFTL_ASSIGN:		BINARY_BIT_ASSIGN_OP(<<);	break;
 		case OP_SHIFTR_ASSIGN:		BINARY_BIT_ASSIGN_OP(>>);	break;
 
+		case OP_JUMP_IF_TRUE: {
+			uint8_t JumpHighByte = this->chunk->advance();
+			uint8_t JumpLowByte = this->chunk->advance();
+
+			if (pop()->IsTruthy()) {
+				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
+				this->chunk->MoveIp(distance);
+			}
+			break;
+		}
+		case OP_JUMP_IF_FALSE: {
+			uint8_t JumpHighByte = this->chunk->advance();
+			uint8_t JumpLowByte = this->chunk->advance();
+
+			if (!(pop()->IsTruthy())) {
+				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
+				this->chunk->MoveIp(distance);
+			}
+			break;
+		}
+		case OP_JUMP: {
+			uint8_t JumpHighByte = this->chunk->advance();
+			uint8_t JumpLowByte = this->chunk->advance();
+
+			short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
+			this->chunk->MoveIp(distance);
+			break;
+		}
+		case OP_LOOP: {
+			uint8_t JumpHighByte = this->chunk->advance();
+			uint8_t JumpLowByte = this->chunk->advance();
+
+			short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
+			this->chunk->MoveIp(-distance);
+			break;
+		}
+
+
 		default:
-			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + op);
+			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + opcode);
 			break;
 	}
 

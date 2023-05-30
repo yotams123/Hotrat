@@ -52,6 +52,11 @@ typedef enum {
 	OP_SHIFTL_ASSIGN,
 	OP_SHIFTR_ASSIGN,
 
+	OP_JUMP,
+	OP_JUMP_IF_TRUE,
+	OP_JUMP_IF_FALSE,
+	OP_LOOP,
+
 	OP_NEGATE,
 } Opcode;
 
@@ -59,7 +64,7 @@ typedef struct Chunk {
 private:
 
 	std::vector<uint8_t> code;
-	std::vector<uint8_t>::iterator ip;
+	short ip;
 
 	std::vector<Value *> constants;
 	struct Chunk* enclosing;
@@ -79,9 +84,12 @@ public:
 	std::vector<uint8_t>& GetCode();
 	bool IsAtEnd();
 
-	_int64 GetOffset();
-	void SyncIP();
-	int CountLines();
+	short GetOffset();
+	short GetSize();
+	void MoveIp(short distance);
 
+	void PatchJump(short JumpIndex, short distance);
+
+	int CountLines();
 } Chunk;
 

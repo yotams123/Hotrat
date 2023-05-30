@@ -39,6 +39,14 @@ private:
 		UNRECOGNIZED_TOKEN = 101,
 		UNEXPECTED_TOKEN,
 		CONSTANTS_OVERFLOW,
+		INTERNAL_ERROR,  // Errors that have to do with the compiler, not the user.
+		UNCLOSED_BLOCK,
+
+		BREAK_IF = 150,
+		BREAK_WHILE,
+		BREAK_FOR,
+		BREAK_RUNNABLE,
+		BREAK_RAT
 	} ExitCode;// compile error code
 
 	typedef void (Compiler::* ParseFunction) ();
@@ -68,6 +76,10 @@ private:
 	void declaration();
 	void VarDeclaration();
 	
+	uint8_t block();		// returns code matching type of closing token
+
+	void IfStatement();
+	void WhileStatement();
 
 	ParseRule& GetRule(TokenType);
 	void ParsePrecedence(Precedence);
@@ -76,11 +88,15 @@ private:
 	bool match(TokenType type);
 	void consume(TokenType type, std::string ErrorMsg);
 	Token Current();
-	Token peek(signed distance);
+	Token peek(int distance);
 
 	// bytecode
 	void EmitByte(uint8_t byte);
 	void EmitBytes(uint8_t byte1, uint8_t byte2);
 	void EmitReturn();
+
+	short EmitJump(Opcode JumpInstruction);
+	void PatchJump(short JumpIndex);
+	void PatchLoop(short LoopStart);
 };
 

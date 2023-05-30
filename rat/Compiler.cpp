@@ -49,6 +49,9 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 
 	RuleTable[IDENTIFIER] = { &Compiler::variable, nullptr, PREC_LITERAL };
 
+	RuleTable[IF] = { &Compiler::declaration, nullptr, PREC_ASSIGN };
+	RuleTable[WHILE] = { &Compiler::declaration, nullptr, PREC_ASSIGN };
+
 	CurrentChunk = new Chunk();
 }
 
@@ -58,19 +61,19 @@ Compiler::~Compiler() {
 
 Chunk* Compiler::Compile() {
 	while (!match(TOKEN_EOF)) {
+		while (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
+		if (match(TOKEN_EOF)) break; // in case script ends with newline
 		try {
-			expression();
+			ParsePrecedence(PREC_ASSIGN);
 		}
 		catch (int e) {
 			if (e >= 100 && e <= 199) {
 				synchronize();
 			}
 		}
-		while (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
 	}
 	if (HadError) return nullptr;
 
-	CurrentChunk->SyncIP();
 	return CurrentChunk;
 }
 
@@ -125,6 +128,37 @@ void Compiler::literal() {
 	advance();
 }
 
+
+uint8_t Compiler::block() {
+	while (true) {
+		while (match(TOKEN_NEWLINE)) literal();
+		Token tok = Current();
+		switch (tok.GetType())
+		{
+			case ENDIF:
+			case ELSE:
+				return BREAK_IF;
+
+			case ENDWHILE:
+				return BREAK_WHILE;
+
+			case ENDFOR:
+				return BREAK_FOR;
+
+			case ENDRUNNABLE:
+				return ENDRUNNABLE;
+
+			case ENDREPEAT:
+				return ENDREPEAT;
+
+			case TOKEN_EOF:
+				return UNCLOSED_BLOCK; break;
+
+			default:
+				ParsePrecedence(PREC_ASSIGN);
+		}
+	}
+}
 
 void Compiler::variable() {
 	Token Identifier = advance();
@@ -262,6 +296,8 @@ void Compiler::declaration() {
 			VarDeclaration();
 			break;
 		}
+		case IF:	IfStatement(); break;
+		case WHILE:	WhileStatement(); break;
 	}
 }
 
@@ -276,6 +312,70 @@ void Compiler::VarDeclaration() {
 		EmitByte(OP_NONE);
 	}
 	EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
+}
+
+
+void Compiler::IfStatement() {
+	expression();	// the condition for the block
+	consume(COLON, "Expected ':' after expression");
+	short SkipIf = EmitJump(OP_JUMP_IF_FALSE);
+	short SkipElse = 0;
+
+	uint8_t BlockCode = block();
+	switch (BlockCode)
+	{
+		case BREAK_IF:	break;
+
+		case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endif'");
+		default:	error(UNEXPECTED_TOKEN, "expected 'endif'");
+	}
+
+	if (match(ELSE)) {
+		advance();
+		consume(COLON, "Expected ':' after else");
+
+		SkipElse = EmitJump(OP_JUMP);
+		advance();
+
+		PatchJump(SkipIf);
+
+		BlockCode = block();
+		switch (BlockCode)
+		{
+			case BREAK_IF:	break;
+
+			case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endif'");
+
+			default:	error(UNEXPECTED_TOKEN, "expected 'endif'");
+		}
+
+		if (match(ELSE)) error(UNEXPECTED_TOKEN, "Can't have more than one 'else' block");
+	}
+
+	advance();
+	SkipElse == 0 ? PatchJump(SkipIf) : PatchJump(SkipElse); // end of if block
+	return;
+}
+
+
+void Compiler::WhileStatement() {
+	short Loopstart = this->CurrentChunk->GetSize() - 1;
+	expression();  // loop condition
+	consume(COLON, "expected ':' after expression");
+
+	short BreakLoop = EmitJump(OP_JUMP_IF_FALSE);
+
+	uint8_t BlockCode = block();
+	switch (BlockCode) {
+	case BREAK_WHILE:	advance(); break;
+
+		case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endwhile'");
+
+		default:	error(UNEXPECTED_TOKEN, "expected 'endwhile'");
+	}
+	
+	PatchLoop(Loopstart);
+	PatchJump(BreakLoop);
 }
 
 Compiler::ParseRule& Compiler::GetRule(TokenType type) {
@@ -340,4 +440,40 @@ void Compiler::EmitBytes(uint8_t byte1, uint8_t byte2) {
 
 void Compiler::EmitReturn() {
 	CurrentChunk->Append(OP_RETURN);
+}
+
+
+short Compiler::EmitJump(Opcode JumpInstruction) {
+	short index;
+	switch (JumpInstruction)
+	{
+		case OP_JUMP:
+		case OP_JUMP_IF_TRUE:
+		case OP_JUMP_IF_FALSE:
+			EmitByte(JumpInstruction);
+			EmitBytes(0, 0);
+			index = CurrentChunk->GetSize() - 1;
+			return index;
+
+		default:
+			error(INTERNAL_ERROR, "");
+			break;
+	}
+}
+
+void Compiler::PatchJump(short JumpIndex) {
+	short CurrentIndex = CurrentChunk->GetSize() - 1;
+	if (CurrentIndex < JumpIndex) error(INTERNAL_ERROR, "");
+
+	CurrentChunk->PatchJump(JumpIndex, CurrentIndex - JumpIndex);
+}
+
+void Compiler::PatchLoop(short LoopStart) {
+	EmitByte(OP_LOOP);
+	EmitBytes(0, 0);
+
+	short CurrentIndex = CurrentChunk->GetSize() - 1;
+	if (CurrentIndex < LoopStart) error(INTERNAL_ERROR, "");
+
+	CurrentChunk->PatchJump(CurrentIndex, CurrentIndex - LoopStart);
 }

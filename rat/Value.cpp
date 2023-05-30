@@ -28,6 +28,18 @@ std::string Value::ToString() {
 	return this->StrRep;
 }
 
+bool Value::IsTruthy() {
+	switch (this->type)
+	{
+		case NUM_T:		return ((NumValue*)this)->GetValue() != 0;		break;
+		case BOOL_T:	return ((BoolValue*)this)->GetValue();			break;
+		case STRING_T:	return ((StrValue*)this)->GetValue() != "";		break;
+		case NONE_T:	return false;									break;
+
+		default:	return false;
+	}
+}
+
 
 NumValue::NumValue(float value) {
 	this->value = value;
