@@ -12,6 +12,8 @@ Interpreter::Interpreter(Chunk* chunk) {
 	this->objects = nullptr;
 	stack.count = 0;
 	
+	this->Repeats = std::stack<int>();
+
 	globals = std::unordered_map<std::string, Value*>();
 }
 
@@ -215,7 +217,8 @@ void Interpreter::RunCommand() {
 			uint8_t IdIndex = chunk->advance();
 			std::string identifier = GetConstantStr(IdIndex);
 
-			Value* v = pop();
+			Value* v = peek(0); // want to keep value on the stack in case the assignment is part of an expression
+			// eg.  'if i = 18:' will evaluate to 'true'
 
 			if (globals[identifier] == nullptr) error(UNDEFINED_RAT, "Setting value to an undefined rat");
 
@@ -319,6 +322,30 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
+		case OP_REPEAT: {
+			Value* v = pop();
+			if (!IsIntegerValue(v)) error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
+			int n = ((NumValue*)v)->GetValue();
+
+			if (n < 0)  error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
+			this->Repeats.push(n);
+			break;
+		}
+
+		case OP_END_REPEAT: {
+			int n = Repeats.top();
+			this->Repeats.pop();
+
+			if (n == 0) {
+				this->chunk->MoveIp(4);  // skip over 'op_loop' instruction
+			}
+			else {
+				this->Repeats.push(n - 1);
+			}
+
+			break;
+		}
+
 
 		default:
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + opcode);
@@ -335,7 +362,8 @@ Value *Interpreter::pop() {
 		error(STACK_UNDERFLOW, "Popping from empty stack");
 	}
 
-	Value *i = stack.stk[--stack.count];
+	stack.count--;
+	Value *i = stack.stk[stack.count];
 
 	return i;
 }

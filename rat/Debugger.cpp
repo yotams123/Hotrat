@@ -114,6 +114,9 @@ void Debugger::DisassembleInstruction() {
 		case OP_JUMP_IF_FALSE:		JumpOperation("OP_JUMP_IF_FALSE");	break;
 		case OP_LOOP:				JumpOperation("OP_LOOP");			break;
 
+		case OP_REPEAT:				SimpleOperation("OP_REPEAT");		break;
+		case OP_END_REPEAT:			SimpleOperation("OP_END_REPEAT");	break;
+
 		default: {
 			std::cout << "Unrecognized instruction" << instruction << "\t\n";
 			offset++;

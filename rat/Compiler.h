@@ -47,6 +47,7 @@ private:
 		BREAK_IF = 150,
 		BREAK_WHILE,
 		BREAK_FOR,
+		BREAK_REPEAT,
 		BREAK_RUNNABLE,
 		BREAK_RAT
 	} ExitCode;// compile error code
@@ -82,6 +83,7 @@ private:
 
 	void IfStatement();
 	void WhileStatement();
+	void RepeatStatement();
 
 	ParseRule& GetRule(TokenType);
 	void ParsePrecedence(Precedence);

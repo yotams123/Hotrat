@@ -4,7 +4,7 @@ Value::Value() {
 	this->next = nullptr;
 
 	this->type = NONE_T; // temporary value, will be set by the actual type's initializer
-	this->StrRep = "Error - value with no type";
+	this->StrRep = "None";
 }
 
 Value::~Value() {

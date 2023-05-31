@@ -16,6 +16,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	
 	RuleTable[TRUE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[FALSE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
+	RuleTable[NONE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 
 	RuleTable[AND] = { nullptr, &Compiler::binary, PREC_AND };
 	RuleTable[OR] = { nullptr, &Compiler::binary, PREC_OR };
@@ -52,8 +53,9 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 
 	RuleTable[IDENTIFIER] = { &Compiler::variable, nullptr, PREC_LITERAL };
 
-	RuleTable[IF] = { &Compiler::declaration, nullptr, PREC_ASSIGN };
-	RuleTable[WHILE] = { &Compiler::declaration, nullptr, PREC_ASSIGN };
+	RuleTable[IF] =			{ &Compiler::declaration, nullptr, PREC_ASSIGN };
+	RuleTable[WHILE] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
+	RuleTable[REPEAT] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 
 	CurrentChunk = new Chunk();
 }
@@ -123,6 +125,7 @@ void Compiler::literal() {
 
 		case TRUE:				EmitByte(OP_TRUE);		break;
 		case FALSE:				EmitByte(OP_FALSE);		break;
+		case NONE:				EmitByte(OP_NONE);		break;
 
 		case TOKEN_NEWLINE:		EmitByte(OP_NEWLINE);	break;
 		default:	break;
@@ -149,10 +152,10 @@ uint8_t Compiler::block() {
 				return BREAK_FOR;
 
 			case ENDRUNNABLE:
-				return ENDRUNNABLE;
+				return BREAK_RUNNABLE;
 
 			case ENDREPEAT:
-				return ENDREPEAT;
+				return BREAK_REPEAT;
 
 			case TOKEN_EOF:
 				return UNCLOSED_BLOCK; break;
@@ -312,8 +315,9 @@ void Compiler::declaration() {
 			VarDeclaration();
 			break;
 		}
-		case IF:	IfStatement(); break;
-		case WHILE:	WhileStatement(); break;
+		case IF:		IfStatement();		break;
+		case WHILE:		WhileStatement();	break;
+		case REPEAT:	RepeatStatement();	break;
 	}
 }
 
@@ -393,6 +397,30 @@ void Compiler::WhileStatement() {
 	PatchLoop(Loopstart);
 	PatchJump(BreakLoop);
 }
+
+
+void Compiler::RepeatStatement() {
+	expression();
+	consume(COLON, "Expected ':' after expression");
+
+	EmitByte(OP_REPEAT);
+
+	short Loopstart = this->CurrentChunk->GetSize() - 1;
+
+	uint8_t BlockCode = block();
+	switch (BlockCode) {
+		case BREAK_REPEAT:	advance(); break;
+
+		case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endrepeat'");
+
+		default:	error(UNEXPECTED_TOKEN, "expected 'endrepeat'");
+	}
+	
+	EmitByte(OP_END_REPEAT); // will decrement loop value, and jump over the loop instruction if done
+
+	PatchLoop(Loopstart); // will jump to start of loop
+}
+
 
 Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 	return RuleTable[type];

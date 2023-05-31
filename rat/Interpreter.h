@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <unordered_map>
+#include <stack>
 
 #include "Chunk.h"
 #include "Value.h"
@@ -19,6 +20,8 @@ private:
 	} StackStruct;
 
 	StackStruct stack;
+	std::stack<int> Repeats; // stack holding loop number for 'repeat' loops
+
 	void push(Value *value);
 	Value *pop();
 

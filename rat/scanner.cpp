@@ -45,6 +45,7 @@ Token Scanner::ScanToken() {
 				if (CheckWord("if"))		return Token(ENDIF, "endif");
 				if (CheckWord("runnable"))	return Token(ENDRUNNABLE, "endrunnable");
 				if (CheckWord("rat"))		return Token(ENDRAT, "endrat");
+				if (CheckWord("repeat"))	return Token(ENDREPEAT, "endrepeat");
 			}
 			else if (CheckWord("lse")) return Token(ELSE, "else");
 
@@ -69,9 +70,11 @@ Token Scanner::ScanToken() {
 		case 'r': {
 			if (CheckWord("eturn"))	return Token(RETURN, "return");
 			if (CheckWord("at")) return Token(RAT, "rat");
+			if (CheckWord("unnable")) return Token(RUNNABLE, "runnable");
+			if (CheckWord("epeat")) return Token(REPEAT, "repeat");
+			
+			break;
 		}
-
-		case 'R': if (CheckWord("unnable")) return Token(RUNNABLE, "Runnable"); break;
 		
 		case 't': { 
 			if (CheckWord("his")) return Token(THIS, "this");
