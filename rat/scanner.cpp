@@ -230,13 +230,33 @@ Token Scanner::Number() {
 }
 
 Token Scanner::String() {
-	while (peek(0) != '"' && !IsAtEnd()) { advance(); }
+	int newline_toks = 0;
+	while (peek(0) != '"' && !IsAtEnd()) { 
+		if (peek(0) == '\n') {
+			newline_toks++;
+			line++;
+		}
+		advance(); 
+	}
+
+
 	if (IsAtEnd()) {
 		error("Unclosed string");
-		return Token(TOKEN_EOF, "");
+		tokens.push_back(Token(TOKEN_EOF, ""));
 	}
 	advance(); // get rid of closing ""
-	return Token(STRING_LITERAL, src.substr(start + 1, current - start - 2));
+
+	Token str = Token(STRING_LITERAL, src.substr(start + 1, current - start - 2));
+	if (newline_toks > 0) {
+		return (str);
+	}
+	else {
+		tokens.push_back(str);
+		for (int i = 0; i < newline_toks - 1; i++) {
+			tokens.push_back(Token(TOKEN_NEWLINE, "\n"));
+		}
+		return Token(TOKEN_NEWLINE, "\n");
+	}
 }
 
 Token Scanner::Identifier() {
