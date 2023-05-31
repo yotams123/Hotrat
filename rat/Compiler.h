@@ -104,5 +104,7 @@ private:
 	short EmitJump(Opcode JumpInstruction);
 	void PatchJump(short JumpIndex);
 	void PatchLoop(short LoopStart);
+
+	uint8_t SafeAddConstant(Token constant);
 };
 

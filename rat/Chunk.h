@@ -78,6 +78,7 @@ public:
 	~Chunk();
 
 	uint8_t AddConstant(Token);
+	void ClearConstants();
 
 	void Append(uint8_t);
 	void Append(uint8_t, uint8_t);

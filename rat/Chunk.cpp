@@ -50,13 +50,25 @@ uint8_t Chunk::AddConstant(Token constant) {
 	}
 
 	constants.push_back(val);
-	return (uint8_t)constants.size() - 1; // index of constant
+	return (uint8_t)(constants.size() - 1); // index of constant
 }
 
 Value *Chunk::ReadConstant(uint8_t index) {
 	return constants[index];
 }
 
+
+void Chunk::ClearConstants() {
+	for (int i = 0; i < this->constants.size(); i++) {
+		try {
+			delete this->constants[i];
+			this->constants[i] = nullptr;
+		}
+		catch (const std::exception& e) {
+			continue;
+		}
+	}
+}
 
 void Chunk::Append(uint8_t byte) {
 	code.push_back(byte);

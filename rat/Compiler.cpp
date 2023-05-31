@@ -61,6 +61,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 }
 
 Compiler::~Compiler() {
+	CurrentChunk->ClearConstants();
 	delete CurrentChunk;
 }
 
@@ -77,8 +78,10 @@ Chunk* Compiler::Compile() {
 			}
 		}
 	}
-	if (HadError) return nullptr;
-
+	if (HadError) {
+		this->CurrentChunk->ClearConstants();
+		return nullptr;
+	}
 	return CurrentChunk;
 }
 
@@ -117,14 +120,7 @@ void Compiler::literal() {
 	{
 		case STRING_LITERAL:
 		case NUM_LITERAL: {
-			uint8_t index;
-			try {
-				index = CurrentChunk->AddConstant(Current());
-			}
-			catch (std::string e){
-				if (e == "Constants overflow")	error(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
-				if (e == "Float overflow")		error(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
-			}
+			uint8_t index = SafeAddConstant(Current());
 
 			EmitBytes(OP_CONSTANT, index);
 			break;
@@ -175,15 +171,7 @@ uint8_t Compiler::block() {
 
 void Compiler::variable() {
 	Token Identifier = advance();
-	uint8_t index;
-
-	try {
-		index = CurrentChunk->AddConstant(Identifier);
-	}
-	catch (std::string e) {
-		if (e == "Constants overflow") error(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
-	}
-
+	uint8_t index = SafeAddConstant(Identifier);
 
 	if (match(EQUALS)) {
 		advance();
@@ -259,8 +247,8 @@ void Compiler::unary() {
 	ParsePrecedence(PREC_UNARY);
 	
 	switch (op.GetType()) {
-	case MINUS:	EmitByte(OP_NEGATE); break;
-	case BANG:  EmitByte(OP_NOT);	 break;
+		case MINUS:	EmitByte(OP_NEGATE); break;
+		case BANG:  EmitByte(OP_NOT);	 break;
 
 	default: break;
 	}
@@ -436,6 +424,21 @@ void Compiler::RepeatStatement() {
 	PatchLoop(Loopstart); // will jump to start of loop
 }
 
+
+uint8_t Compiler::SafeAddConstant(Token Constant) {
+	// adding a constant to the chunk, wrapped in a try-catch block
+
+	uint8_t index;
+	try {
+		index = CurrentChunk->AddConstant(Constant);
+	}
+	catch (std::string e) {
+		if (e == "Constants overflow")	error(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Float overflow")		error(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
+	}
+
+	return index;
+}
 
 Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 	return RuleTable[type];

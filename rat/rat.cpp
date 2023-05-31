@@ -70,7 +70,6 @@ int Run(std::string& line) {
     Chunk *script = compiler.Compile();
 
     if (!script) return 100; // compilation error
-
 #ifdef DEBUG_PRINT_CODE
     Debugger debugger = Debugger(script, (std::string)"script");
     debugger.DisassembleChunk();
