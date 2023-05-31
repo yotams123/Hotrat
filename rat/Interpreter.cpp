@@ -327,8 +327,8 @@ void Interpreter::RunCommand() {
 			if (!IsIntegerValue(v)) error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
 			int n = ((NumValue*)v)->GetValue();
 
-			if (n < 0)  error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
-			this->Repeats.push(n);
+			if (n <= 0)  error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
+			this->Repeats.push(n - 1);
 			break;
 		}
 

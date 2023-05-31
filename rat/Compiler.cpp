@@ -117,8 +117,15 @@ void Compiler::literal() {
 	{
 		case STRING_LITERAL:
 		case NUM_LITERAL: {
-			uint8_t index = CurrentChunk->AddConstant(Current());
-			if (index == -1) error(CONSTANTS_OVERFLOW, "Constants table overflow - too many constants");
+			uint8_t index;
+			try {
+				index = CurrentChunk->AddConstant(Current());
+			}
+			catch (std::string e){
+				if (e == "Constants overflow")	error(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+				if (e == "Float overflow")		error(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
+			}
+
 			EmitBytes(OP_CONSTANT, index);
 			break;
 		}
@@ -168,8 +175,16 @@ uint8_t Compiler::block() {
 
 void Compiler::variable() {
 	Token Identifier = advance();
-	uint8_t index = CurrentChunk->AddConstant(Identifier);
-	
+	uint8_t index;
+
+	try {
+		index = CurrentChunk->AddConstant(Identifier);
+	}
+	catch (std::string e) {
+		if (e == "Constants overflow") error(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+	}
+
+
 	if (match(EQUALS)) {
 		advance();
 		expression();

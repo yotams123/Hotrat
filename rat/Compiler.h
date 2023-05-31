@@ -40,9 +40,11 @@ private:
 		COMPILE_OK = 0,
 		UNRECOGNIZED_TOKEN = 101,
 		UNEXPECTED_TOKEN,
-		CONSTANTS_OVERFLOW,
 		INTERNAL_ERROR,  // Errors that have to do with the compiler, not the user.
 		UNCLOSED_BLOCK,
+
+		FLOAT_OVERFLOW = 120,  // errors that are common with chunk
+		CONSTANTS_OVERFLOW,
 
 		BREAK_IF = 150,
 		BREAK_WHILE,

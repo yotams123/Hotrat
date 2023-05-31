@@ -1,5 +1,7 @@
 #include "Chunk.h"
 
+#include <limits>
+
 Chunk::Chunk() {
 	ip = 0;
 
@@ -21,17 +23,30 @@ uint8_t Chunk::advance() {
 
 
 uint8_t Chunk::AddConstant(Token constant) {
-	if (constants.size() >= 256) return -1; // TODO throw error
+
+	if (constants.size() >= 256) {
+		throw std::string("Constants overflow");
+	}
 
 	Value *val;
 
-	switch (constant.GetType()) {
-		case NUM_LITERAL:	val = new NumValue(std::stof(constant.GetLexeme()));	break;
-		case TRUE:			val = new BoolValue(true);
-		case FALSE:			val = new BoolValue(false);
+	TokenType t = constant.GetType();
+	switch (t) {
+		case NUM_LITERAL: {
+			try {
+				val = new NumValue(std::stof(constant.GetLexeme()));	break;
+			}
+			catch (const std::exception& e) {
+				throw std::string("Float overflow");
+			}
+			break;
+		}
+
+		case TRUE:			val = new BoolValue(true); break;
+		case FALSE:			val = new BoolValue(false); break;
 
 		case STRING_LITERAL:
-		case IDENTIFIER:	val = new StrValue((std::string&)constant.GetLexeme());
+		case IDENTIFIER:	val = new StrValue((std::string&)constant.GetLexeme()); break;
 	}
 
 	constants.push_back(val);
