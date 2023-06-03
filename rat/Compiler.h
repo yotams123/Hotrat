@@ -54,7 +54,7 @@ private:
 		BREAK_RAT
 	} ExitCode;// compile error code
 
-	typedef void (Compiler::* ParseFunction) ();
+	typedef void (Compiler::* ParseFunction) (bool CanAssign);
 	
 	typedef struct {
 		ParseFunction prefix;
@@ -75,14 +75,14 @@ private:
 	int CountLines();
 
 	// parsing
-	void literal();
-	void variable();
-	void unary();
-	void binary();
-	void grouping();
-	void expression();
-	void statement();
-	void declaration();
+	void literal(bool CanAssign);
+	void variable(bool CanAssign);
+	void unary(bool CanAssign);
+	void binary(bool CanAssign);
+	void grouping(bool CanAssign);
+	void expression(bool CanAssign);
+	void statement(bool CanAssign);
+	void declaration(bool CanAssign);
 
 	void VarDeclaration();
 	void ExpressionStatement();

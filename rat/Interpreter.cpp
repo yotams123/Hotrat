@@ -119,7 +119,7 @@ void Interpreter::RunCommand() {
 	switch (opcode)
 	{
 		case OP_NEWLINE: {
-			if (stack.count > 0) std::cout << /*pop()->ToString() << */ "\n\n\n";
+			if (stack.count > 0) std::cout << "\n\n\n";
 			break; 
 		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;

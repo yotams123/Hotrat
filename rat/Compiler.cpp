@@ -71,10 +71,10 @@ Compiler::~Compiler() {
 
 Chunk* Compiler::Compile() {
 	while (!match(TOKEN_EOF)) {
-		while (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
+		while (match(TOKEN_NEWLINE)) literal(true); // to emit the newline byte
 		if (match(TOKEN_EOF)) break; // in case script ends with newline
 		try {
-			declaration();
+			declaration(true);
 		}
 		catch (int e) {
 			if (e >= 100 && e <= 199) {
@@ -127,7 +127,7 @@ int Compiler::CountLines() {
 	return lines;
 }
 
-void Compiler::literal() {
+void Compiler::literal(bool CanAssign) {
 	TokenType type = Current().GetType();
 
 	switch (type)
@@ -154,7 +154,7 @@ void Compiler::literal() {
 
 uint8_t Compiler::block() {
 	while (true) {
-		while (match(TOKEN_NEWLINE)) literal();
+		while (match(TOKEN_NEWLINE)) literal(true);
 		Token tok = Current();
 		switch (tok.GetType())
 		{
@@ -178,84 +178,96 @@ uint8_t Compiler::block() {
 				return UNCLOSED_BLOCK; break;
 
 			default:
-				declaration();
+				declaration(true);
 		}
 	}
 }
 
-void Compiler::variable() {
+void Compiler::variable(bool CanAssign) {
 	Token Identifier = advance();
 	uint8_t index = SafeAddConstant(Identifier);
 
-	if (match(EQUALS)) {
-		advance();
-		expression();
-		EmitBytes(OP_SET_GLOBAL, index);
+	if (CanAssign) {
+		if (match(EQUALS)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_SET_GLOBAL, index);
 
-	} else if (match(PLUS_PLUS)) {
-		EmitBytes(OP_INC, index);
-		advance();
-	
-	} else if (match(MINUS_MINUS)) {
-		EmitBytes(OP_DEC, index);
-		advance();
+		}
+		else if (match(PLUS_PLUS)) {
+			EmitBytes(OP_INC, index);
+			advance();
 
-	}
-	else if (match(PLUS_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_ADD_ASSIGN, index);
+		}
+		else if (match(MINUS_MINUS)) {
+			EmitBytes(OP_DEC, index);
+			advance();
 
-	}
-	else if (match(MINUS_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_SUB_ASSIGN, index);
+		}
+		else if (match(PLUS_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_ADD_ASSIGN, index);
 
-	}
-	else if (match(STAR_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_MULTIPLY_ASSIGN, index);
+		}
+		else if (match(MINUS_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_SUB_ASSIGN, index);
 
-	} else if (match(SLASH_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_DIVIDE_ASSIGN, index);
+		}
+		else if (match(STAR_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_MULTIPLY_ASSIGN, index);
 
-	} else if (match(BIT_AND_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_BIT_AND_ASSIGN, index);
+		}
+		else if (match(SLASH_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_DIVIDE_ASSIGN, index);
 
-	} else if (match(BIT_OR_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_BIT_OR_ASSIGN, index);
+		}
+		else if (match(BIT_AND_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_BIT_AND_ASSIGN, index);
 
-	} else if (match(BIT_XOR_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_BIT_XOR_ASSIGN, index);
+		}
+		else if (match(BIT_OR_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_BIT_OR_ASSIGN, index);
 
-	} else if (match(SHIFT_LEFT_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_SHIFTL_ASSIGN, index);
+		}
+		else if (match(BIT_XOR_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_BIT_XOR_ASSIGN, index);
 
-	}
-	else if (match(SHIFT_RIGHT_ASSIGN)) {
-		advance();
-		expression();
-		EmitBytes(OP_SHIFTR_ASSIGN, index);
+		}
+		else if (match(SHIFT_LEFT_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_SHIFTL_ASSIGN, index);
 
+		}
+		else if (match(SHIFT_RIGHT_ASSIGN)) {
+			advance();
+			expression(true);
+			EmitBytes(OP_SHIFTR_ASSIGN, index);
+
+		} else {
+			EmitBytes(OP_GET_GLOBAL, index);
+		}
 	}
 	else {
 		EmitBytes(OP_GET_GLOBAL, index);
 	}
+	
 }
 
-void Compiler::unary() {
+void Compiler::unary(bool CanAssign) {
 	Token op = advance();
 
 	ParsePrecedence(PREC_UNARY);
@@ -269,7 +281,7 @@ void Compiler::unary() {
 
 }
 
-void Compiler::binary() {
+void Compiler::binary(bool CanAssign) {
 	Token op = advance();
 
 	short ConditionJump = -1;
@@ -315,17 +327,17 @@ void Compiler::binary() {
 	}
 }
 
-void Compiler::grouping() {
+void Compiler::grouping(bool CanAssign) {
 	advance(); // consume left parenthese
-	expression();
+	expression(CanAssign);  // irrelevant parameter - expression will allow assigning
 	consume(RIGHT_PAREN, (std::string)"Expected ')' after expression");
 }
 
-void Compiler::expression(){
+void Compiler::expression(bool CanAssign){
 	ParsePrecedence(PREC_ASSIGN);
 }
 
-void Compiler::declaration() {
+void Compiler::declaration(bool CanAssign) {
 	Token kw = Current();
 	switch (kw.GetType()) {
 		case RAT: {
@@ -334,11 +346,11 @@ void Compiler::declaration() {
 			break;
 		}
 
-		default: statement();
+		default: statement(CanAssign);
 	}
 }
 
-void Compiler::statement() {
+void Compiler::statement(bool CanAssign) {
 	Token kw = Current();
 
 	switch (kw.GetType()) {
@@ -366,7 +378,7 @@ void Compiler::statement() {
 
 
 void Compiler::ExpressionStatement() {
-	expression();
+	expression(true);  // 'expression' will always allow assignment, regardless of parameter
 	if (!match(TOKEN_EOF)) {
 		consume(TOKEN_NEWLINE, "expected '\\n' after expression");
 	}
@@ -382,7 +394,7 @@ void Compiler::VarDeclaration() {
 	uint8_t IdIndex = SafeAddConstant(identifier);
 	if (match(EQUALS)) {
 		advance();
-		expression();
+		expression(true); // expression will always allow assignment, regardless of parameter
 	}
 	else {
 		EmitByte(OP_NONE);
@@ -392,7 +404,7 @@ void Compiler::VarDeclaration() {
 
 
 void Compiler::IfStatement() {
-	expression();	// the condition for the block
+	expression(true);	// the condition for the block
 	consume(COLON, "Expected ':' after expression");
 	short SkipIf = EmitJump(OP_JUMP_IF_FALSE);
 	short SkipElse = 0;
@@ -438,7 +450,7 @@ void Compiler::IfStatement() {
 
 void Compiler::WhileStatement() {
 	short Loopstart = this->CurrentChunk->GetSize() - 1;
-	expression();  // loop condition
+	expression(true);  // loop condition
 	consume(COLON, "expected ':' after expression");
 
 	short BreakLoop = EmitJump(OP_JUMP_IF_FALSE);
@@ -458,7 +470,7 @@ void Compiler::WhileStatement() {
 
 
 void Compiler::RepeatStatement() {
-	expression();
+	expression(true);
 	consume(COLON, "Expected ':' after expression");
 
 	EmitByte(OP_REPEAT);
@@ -507,7 +519,10 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
 		return;
 	}
-	(this->*PrefixRule)();
+
+	bool CanAssign = (precedence <= PREC_ASSIGN);
+	(this->*PrefixRule)(CanAssign);
+
 
 	while (precedence <= GetRule(Current().GetType()).precedence) {
 
@@ -516,7 +531,10 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		if (InfixRule == nullptr) {
 			ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
 		}
-		(this->*InfixRule)();
+		(this->*InfixRule)(CanAssign);
+	}
+	if (match(EQUALS)) { // token hasn't been consumed, meaning assignment target was invalid
+		ErrorAtCurrent(UNEXPECTED_TOKEN, "Invalid assignment target");
 	}
 	return;
 }
