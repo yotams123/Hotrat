@@ -11,8 +11,6 @@ Interpreter::Interpreter(Chunk* chunk) {
 	this->chunk = chunk;
 	this->objects = nullptr;
 	stack.count = 0;
-	
-	this->Repeats = std::stack<int>();
 
 	globals = std::unordered_map<std::string, Value*>();
 }
@@ -92,6 +90,7 @@ void Interpreter::RunCommand() {
 	if (a->GetType() == Value::NUM_T && b->GetType() == Value::NUM_T){\
 		NumValue *na = (NumValue *)a;\
 		na->SetValue(na->GetValue() op ((NumValue *)b)->GetValue());\
+		push(na); \
 	} else {\
 		std::string msg = "Can only perform this operation on two numbers"; \
 		if (IsPlus) msg += " or two strings";\
@@ -109,7 +108,8 @@ void Interpreter::RunCommand() {
 		NumValue *num1 = (NumValue *)a; \
 		NumValue *num2 = (NumValue *)b; \
 		\
-		num1->SetValue((int)(num1->GetValue()) op (int)(num2->GetValue()));\
+		num1->SetValue((int)(num1->GetValue()) op (int)(num2->GetValue())); \
+		push(num1); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform bitwise operations on non-integer types");\
 	}\
@@ -119,11 +119,11 @@ void Interpreter::RunCommand() {
 	switch (opcode)
 	{
 		case OP_NEWLINE: {
-			if (stack.count > 0) std::cout << pop()->ToString() << "\n\n\n";
+			if (stack.count > 0) std::cout << /*pop()->ToString() << */ "\n\n\n";
 			break; 
 		} 
 		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
-		case OP_POP:		pop();
+		case OP_POP:		pop();	break;
 
 		case OP_NONE: {
 			push(NewObject(nullptr));
@@ -253,6 +253,7 @@ void Interpreter::RunCommand() {
 			}
 			NumValue* num = (NumValue*)var;
 			num->SetValue(num->GetValue() - 1);
+			push(num);
 
 			break;
 		}
@@ -267,6 +268,7 @@ void Interpreter::RunCommand() {
 
 					StrValue* a = (StrValue*)va;
 					a->SetValue((std::string&)(*a + *b));
+					push(a);
 					break;
 				}
 
@@ -323,24 +325,26 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_REPEAT: {
-			Value* v = pop();
+			Value* v = peek(0);
 			if (!IsIntegerValue(v)) error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
 			int n = ((NumValue*)v)->GetValue();
 
 			if (n <= 0)  error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
-			this->Repeats.push(n - 1);
 			break;
 		}
 
 		case OP_END_REPEAT: {
-			int n = Repeats.top();
-			this->Repeats.pop();
+			Value *v = peek(0);
+			if (!IsIntegerValue(v)) error(INTERNAL_ERROR, "");
+
+			NumValue* nv = (NumValue*)v;
+			v->SetValue(nv->GetValue() - 1);
+
+			int n = ((NumValue*)v)->GetValue();
 
 			if (n == 0) {
+				pop();
 				this->chunk->MoveIp(4);  // skip over 'op_loop' instruction
-			}
-			else {
-				this->Repeats.push(n - 1);
 			}
 
 			break;

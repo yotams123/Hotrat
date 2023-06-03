@@ -20,7 +20,6 @@ private:
 	} StackStruct;
 
 	StackStruct stack;
-	std::stack<int> Repeats; // stack holding loop number for 'repeat' loops
 
 	void push(Value *value);
 	Value *pop();
@@ -38,6 +37,8 @@ private:
 		STACK_OVERFLOW,
 		TYPE_ERROR,
 		UNDEFINED_RAT,
+
+		INTERNAL_ERROR,
 	} ExitCode;
 
 

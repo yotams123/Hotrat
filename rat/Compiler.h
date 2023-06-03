@@ -38,12 +38,12 @@ private:
 
 	static enum {
 		COMPILE_OK = 0,
+
 		UNRECOGNIZED_TOKEN = 101,
 		UNEXPECTED_TOKEN,
 		INTERNAL_ERROR,  // Errors that have to do with the compiler, not the user.
 		UNCLOSED_BLOCK,
-
-		FLOAT_OVERFLOW = 120,  // errors that are common with chunk
+		FLOAT_OVERFLOW,  // errors that are common with chunk
 		CONSTANTS_OVERFLOW,
 
 		BREAK_IF = 150,
@@ -67,7 +67,10 @@ private:
 
 	Chunk* CurrentChunk;
 
-	void error(int e, std::string msg);
+	void error(int e, std::string msg, Token where);
+	void ErrorAtPrevious(int e, std::string msg);
+	void ErrorAtCurrent(int e, std::string msg);
+
 	void synchronize();
 	int CountLines();
 
@@ -78,8 +81,11 @@ private:
 	void binary();
 	void grouping();
 	void expression();
+	void statement();
 	void declaration();
+
 	void VarDeclaration();
+	void ExpressionStatement();
 	
 	uint8_t block();		// returns code matching type of closing token
 

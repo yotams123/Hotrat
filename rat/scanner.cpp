@@ -247,7 +247,7 @@ Token Scanner::String() {
 	advance(); // get rid of closing ""
 
 	Token str = Token(STRING_LITERAL, src.substr(start + 1, current - start - 2));
-	if (newline_toks > 0) {
+	if (newline_toks <= 0) {
 		return (str);
 	}
 	else {

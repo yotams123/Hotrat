@@ -1,5 +1,9 @@
 #include "Compiler.h"
 
+
+// TODO protect against invalid assigning in expressions, e.g "a + b = 9"
+// TODO functions
+
 Compiler::Compiler(std::vector<Token>& tokens) {
 	this->tokens = tokens;
 	CurrentTokenOffset = 0;
@@ -70,7 +74,7 @@ Chunk* Compiler::Compile() {
 		while (match(TOKEN_NEWLINE)) literal(); // to emit the newline byte
 		if (match(TOKEN_EOF)) break; // in case script ends with newline
 		try {
-			ParsePrecedence(PREC_ASSIGN);
+			declaration();
 		}
 		catch (int e) {
 			if (e >= 100 && e <= 199) {
@@ -86,9 +90,17 @@ Chunk* Compiler::Compile() {
 }
 
 
-void Compiler::error(int e, std::string msg) {
+void Compiler::ErrorAtPrevious(int e, std::string msg) {
+	error(e, msg, peek(-1));
+}
+
+void Compiler::ErrorAtCurrent(int e, std::string msg) {
+	error(e, msg, Current());
+}
+
+void Compiler::error(int e, std::string msg, Token where) {
 	int line = CountLines();
-	std::string lexeme =  "'" + Current().GetLexeme() + "'";
+	std::string lexeme =  "'" + where.GetLexeme() + "'";
 	if (lexeme == "'\n'") lexeme = "end";
 
 	std::cout << "[Compilation error in line " << line << ", at " << lexeme	<< " ]: " << msg << "\n";
@@ -107,7 +119,9 @@ int Compiler::CountLines() {
 	int lines = 1;
 	int i = 0;
 	while (i != CurrentTokenOffset) {
-		if (tokens[i].GetType() == TOKEN_NEWLINE) lines++;
+		if (tokens[i].GetType() == TOKEN_NEWLINE) {
+			lines++;
+		}
 		i++;
 	}
 	return lines;
@@ -164,7 +178,7 @@ uint8_t Compiler::block() {
 				return UNCLOSED_BLOCK; break;
 
 			default:
-				ParsePrecedence(PREC_ASSIGN);
+				declaration();
 		}
 	}
 }
@@ -312,21 +326,60 @@ void Compiler::expression(){
 }
 
 void Compiler::declaration() {
-	Token kw = advance();
+	Token kw = Current();
 	switch (kw.GetType()) {
 		case RAT: {
+			advance();
 			VarDeclaration();
 			break;
 		}
-		case IF:		IfStatement();		break;
-		case WHILE:		WhileStatement();	break;
-		case REPEAT:	RepeatStatement();	break;
+
+		default: statement();
 	}
+}
+
+void Compiler::statement() {
+	Token kw = Current();
+
+	switch (kw.GetType()) {
+		case IF: {
+			advance();
+			IfStatement();
+			break;
+		}
+
+		case WHILE: {
+			advance();
+			WhileStatement();
+			break;
+		}
+
+		case REPEAT: {
+			advance();
+			RepeatStatement();
+			break;
+		}
+
+		default:	ExpressionStatement(); break;
+	}
+}
+
+
+void Compiler::ExpressionStatement() {
+	expression();
+	if (!match(TOKEN_EOF)) {
+		consume(TOKEN_NEWLINE, "expected '\\n' after expression");
+	}
+	EmitByte(OP_POP);
 }
 
 void Compiler::VarDeclaration() {
 	Token identifier = advance();
-	uint8_t IdIndex = CurrentChunk->AddConstant(identifier);
+	if (identifier.GetType() != IDENTIFIER) {
+		ErrorAtPrevious(UNEXPECTED_TOKEN, "Expected identifier after 'rat' keyword");
+	}
+
+	uint8_t IdIndex = SafeAddConstant(identifier);
 	if (match(EQUALS)) {
 		advance();
 		expression();
@@ -349,8 +402,8 @@ void Compiler::IfStatement() {
 	{
 		case BREAK_IF:	break;
 
-		case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endif'");
-		default:	error(UNEXPECTED_TOKEN, "expected 'endif'");
+		case UNCLOSED_BLOCK:	ErrorAtCurrent(UNCLOSED_BLOCK, "expected 'endif'");
+		default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "expected 'endif'");
 	}
 
 	if (match(ELSE)) {
@@ -361,22 +414,24 @@ void Compiler::IfStatement() {
 		advance();
 
 		PatchJump(SkipIf);
+		EmitByte(OP_POP);  // pop the condition off the stack
 
 		BlockCode = block();
 		switch (BlockCode)
 		{
 			case BREAK_IF:	break;
 
-			case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endif'");
+			case UNCLOSED_BLOCK:	ErrorAtCurrent(UNCLOSED_BLOCK, "expected 'endif'");
 
-			default:	error(UNEXPECTED_TOKEN, "expected 'endif'");
+			default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "expected 'endif'");
 		}
 
-		if (match(ELSE)) error(UNEXPECTED_TOKEN, "Can't have more than one 'else' block");
+		if (match(ELSE)) ErrorAtCurrent(UNEXPECTED_TOKEN, "Can't have more than one 'else' block");
 	}
 
 	advance();
 	SkipElse == 0 ? PatchJump(SkipIf) : PatchJump(SkipElse); // end of if block
+	EmitByte(OP_POP); // pop the condition off the stack
 	return;
 }
 
@@ -392,9 +447,9 @@ void Compiler::WhileStatement() {
 	switch (BlockCode) {
 	case BREAK_WHILE:	advance(); break;
 
-		case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endwhile'");
+		case UNCLOSED_BLOCK:	ErrorAtCurrent(UNCLOSED_BLOCK, "expected 'endwhile'");
 
-		default:	error(UNEXPECTED_TOKEN, "expected 'endwhile'");
+		default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "expected 'endwhile'");
 	}
 	
 	PatchLoop(Loopstart);
@@ -414,9 +469,9 @@ void Compiler::RepeatStatement() {
 	switch (BlockCode) {
 		case BREAK_REPEAT:	advance(); break;
 
-		case UNCLOSED_BLOCK:	error(UNCLOSED_BLOCK, "expected 'endrepeat'");
+		case UNCLOSED_BLOCK:	ErrorAtCurrent(UNCLOSED_BLOCK, "expected 'endrepeat'");
 
-		default:	error(UNEXPECTED_TOKEN, "expected 'endrepeat'");
+		default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "expected 'endrepeat'");
 	}
 	
 	EmitByte(OP_END_REPEAT); // will decrement loop value, and jump over the loop instruction if done
@@ -433,8 +488,8 @@ uint8_t Compiler::SafeAddConstant(Token Constant) {
 		index = CurrentChunk->AddConstant(Constant);
 	}
 	catch (std::string e) {
-		if (e == "Constants overflow")	error(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
-		if (e == "Float overflow")		error(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
+		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Float overflow")		ErrorAtCurrent(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
 	}
 
 	return index;
@@ -449,7 +504,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	ParseFunction PrefixRule = rule.prefix;
 
 	if (PrefixRule == nullptr) {
-		error(UNEXPECTED_TOKEN, "Expected expression");
+		ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
 		return;
 	}
 	(this->*PrefixRule)();
@@ -459,7 +514,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		rule = GetRule(Current().GetType());
 		ParseFunction InfixRule = rule.infix;
 		if (InfixRule == nullptr) {
-			error(UNEXPECTED_TOKEN, "Expected expression");
+			ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
 		}
 		(this->*InfixRule)();
 	}
@@ -489,7 +544,7 @@ void Compiler::consume(TokenType type, std::string ErrorMsg) {
 		return;
 	}
 
-	error(UNEXPECTED_TOKEN, ErrorMsg);
+	ErrorAtCurrent(UNEXPECTED_TOKEN, ErrorMsg);
 }
 
 void Compiler::EmitByte(uint8_t byte) {
@@ -518,14 +573,14 @@ short Compiler::EmitJump(Opcode JumpInstruction) {
 			return index;
 
 		default:
-			error(INTERNAL_ERROR, "");
+			ErrorAtCurrent(INTERNAL_ERROR, "");
 			break;
 	}
 }
 
 void Compiler::PatchJump(short JumpIndex) {
 	short CurrentIndex = CurrentChunk->GetSize() - 1;
-	if (CurrentIndex < JumpIndex) error(INTERNAL_ERROR, "");
+	if (CurrentIndex < JumpIndex) ErrorAtCurrent(INTERNAL_ERROR, "");
 
 	CurrentChunk->PatchJump(JumpIndex, CurrentIndex - JumpIndex);
 }
@@ -535,7 +590,7 @@ void Compiler::PatchLoop(short LoopStart) {
 	EmitBytes(0, 0);
 
 	short CurrentIndex = CurrentChunk->GetSize() - 1;
-	if (CurrentIndex < LoopStart) error(INTERNAL_ERROR, "");
+	if (CurrentIndex < LoopStart) ErrorAtCurrent(INTERNAL_ERROR, "");
 
 	CurrentChunk->PatchJump(CurrentIndex, CurrentIndex - LoopStart);
 }
