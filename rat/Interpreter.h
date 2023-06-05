@@ -24,7 +24,9 @@ private:
 	void push(Value *value);
 	Value *pop();
 
-	Chunk* chunk;
+	RunnableValue* body;
+	Chunk* CurrentChunk();
+	void SetBody(RunnableValue* body);
 
 	void RunCommand();
 
@@ -48,6 +50,10 @@ private:
 	StrValue* NewObject(std::string& s);
 	Value* NewObject(nullptr_t p);
 
+	bool GetBoolValue(Value *);
+	float GetNumValue(Value *);
+	std::string GetStrValue(Value*);
+
 	std::string GetConstantStr(uint8_t index);
 	float GetConstantNum(uint8_t index);
 	bool GetConstantBool(uint8_t index);
@@ -60,7 +66,7 @@ private:
 	Value* FindGlobal();
 
 public:
-	Interpreter(Chunk*);
+	Interpreter(RunnableValue *);
 	~Interpreter();
 
 	int interpret();

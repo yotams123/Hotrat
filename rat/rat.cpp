@@ -16,6 +16,8 @@
 #include "Debugger.h"
 #endif
 
+// TODO: local variables
+// TODO: change implementation of simple values
 
 int main(int argc, char *argv[])
 {
@@ -67,11 +69,11 @@ int Run(std::string& line) {
     if (tokens.empty()) return 1; // scanner error
 
     Compiler compiler = Compiler(tokens);
-    Chunk *script = compiler.Compile();
+    RunnableValue *script = compiler.Compile();
 
     if (!script) return 100; // compilation error
 #ifdef DEBUG_PRINT_CODE
-    Debugger debugger = Debugger(script, (std::string)"script");
+    Debugger debugger = Debugger(script->GetChunk(), (std::string)"script");
     debugger.DisassembleChunk();
 #endif // DEBUG_PRINT_CODE
 

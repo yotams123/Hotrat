@@ -6,32 +6,10 @@ Chunk::Chunk() {
 	ip = 0;
 
 	constants = std::vector<Value*>();
-	enclosing = nullptr;
-}
-
-
-Chunk::Chunk(Chunk *enclosing) {
-	this->ip = 0;
-
-	this->constants = std::vector<Value*>();
-	this->enclosing = enclosing;
-}
-
-Chunk::Chunk(Chunk *code, Chunk* enclosing) {
-	this->ip = 0;
-
-	this->constants = code->constants;
-	this->enclosing = enclosing;
-
-	this->code = code->GetCode();
 }
 
 Chunk::~Chunk() {
-	std::vector<Value*>::iterator i;
-	for (i = constants.begin(); i < constants.end(); i++)
-	{
-		delete* i;
-	}
+	this->ClearConstants();
 }
 
 uint8_t Chunk::advance() {
@@ -74,15 +52,13 @@ uint8_t Chunk::AddConstant(Token constant) {
 	return (uint8_t)(constants.size() - 1); // index of constant
 }
 
-uint8_t Chunk::AddConstant(Chunk *ByteCode, uint8_t arity, std::string name) {
+uint8_t Chunk::AddConstant(Value *v) {
 
 	if (constants.size() >= 256) {
 		throw std::string("Constants overflow");
 	}
 
-	RunnableValue* val = new RunnableValue(ByteCode, arity, name);
-
-	constants.push_back(val);
+	constants.push_back(v);
 	return (uint8_t)(constants.size() - 1); // index of constant
 }
 
@@ -132,10 +108,17 @@ int Chunk::CountLines() {
 			case OP_GET_GLOBAL:
 			case OP_SET_GLOBAL:
 
-			case OP_INC:
-			case OP_DEC: {
-				op++;
-				op++;  // skip over opcode and operand
+			case OP_INC_GLOBAL:
+			case OP_DEC_GLOBAL: {
+				op += 2;
+				break;
+			}
+
+			case OP_JUMP:
+			case OP_JUMP_IF_FALSE:
+			case OP_JUMP_IF_TRUE:
+			case OP_LOOP: {
+				op += 3;
 				break;
 			}
 			
@@ -152,11 +135,6 @@ short Chunk::GetOffset() {
 
 short Chunk::GetSize() {
 	return this->code.size();
-}
-
-
-Chunk* Chunk::GetEnclosing() {
-	return this->enclosing;
 }
 
 void Chunk::MoveIp(short distance) {

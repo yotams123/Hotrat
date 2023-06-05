@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <sstream>
+#include <map>
 
 class Value {
 public:
@@ -76,10 +77,16 @@ protected:
 	uint8_t arity;	// how many parameters the function accepts
 	std::string name;
 
+	RunnableValue* enclosing;
+	std::map<std::string, nullptr_t> locals;
+
 public:
 	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name);
+	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, uint8_t arity, std::string name);
+	RunnableValue(RunnableValue* ToCopy, RunnableValue *enclosing);		// when calling in the runtime, call a copy of the value, to allow recursion (ip)
 	~RunnableValue() override;
 
 	Chunk* GetChunk();
 	uint8_t GetArity();
+	RunnableValue* GetEnclosing();
 };

@@ -1,9 +1,5 @@
 #include "Compiler.h"
 
-
-// TODO protect against invalid assigning in expressions, e.g "a + b = 9"
-// TODO functions
-
 Compiler::Compiler(std::vector<Token>& tokens) {
 	this->tokens = tokens;
 	CurrentTokenOffset = 0;
@@ -61,15 +57,13 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[WHILE] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 	RuleTable[REPEAT] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 
-	CurrentChunk = new Chunk();
+	CurrentBody = new RunnableValue(new Chunk, 0, "script");
 }
 
 Compiler::~Compiler() {
-	CurrentChunk->ClearConstants();
-	delete CurrentChunk;
 }
 
-Chunk* Compiler::Compile() {
+RunnableValue* Compiler::Compile() {
 	while (!match(TOKEN_EOF)) {
 		while (match(TOKEN_NEWLINE)) literal(true); // to emit the newline byte
 		if (match(TOKEN_EOF)) break; // in case script ends with newline
@@ -83,10 +77,10 @@ Chunk* Compiler::Compile() {
 		}
 	}
 	if (HadError) {
-		this->CurrentChunk->ClearConstants();
+		delete this->CurrentBody;
 		return nullptr;
 	}
-	return CurrentChunk;
+	return this->CurrentBody;
 }
 
 
@@ -177,6 +171,8 @@ uint8_t Compiler::block() {
 			case TOKEN_EOF:
 				return UNCLOSED_BLOCK; break;
 
+			case RUNNABLE:	
+				ErrorAtCurrent(BLOCKED_RUNNABLE, "Can't define a runnable inside a block");
 			default:
 				declaration(true);
 		}
@@ -195,67 +191,67 @@ void Compiler::variable(bool CanAssign) {
 
 		}
 		else if (match(PLUS_PLUS)) {
-			EmitBytes(OP_INC, index);
+			EmitBytes(OP_INC_GLOBAL, index);
 			advance();
 
 		}
 		else if (match(MINUS_MINUS)) {
-			EmitBytes(OP_DEC, index);
+			EmitBytes(OP_DEC_GLOBAL, index);
 			advance();
 
 		}
 		else if (match(PLUS_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_ADD_ASSIGN, index);
+			EmitBytes(OP_ADD_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(MINUS_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SUB_ASSIGN, index);
+			EmitBytes(OP_SUB_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(STAR_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_MULTIPLY_ASSIGN, index);
+			EmitBytes(OP_MULTIPLY_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(SLASH_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_DIVIDE_ASSIGN, index);
+			EmitBytes(OP_DIVIDE_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(BIT_AND_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_BIT_AND_ASSIGN, index);
+			EmitBytes(OP_BIT_AND_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(BIT_OR_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_BIT_OR_ASSIGN, index);
+			EmitBytes(OP_BIT_OR_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(BIT_XOR_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_BIT_XOR_ASSIGN, index);
+			EmitBytes(OP_BIT_XOR_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(SHIFT_LEFT_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SHIFTL_ASSIGN, index);
+			EmitBytes(OP_SHIFTL_ASSIGN_GLOBAL, index);
 
 		}
 		else if (match(SHIFT_RIGHT_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SHIFTR_ASSIGN, index);
+			EmitBytes(OP_SHIFTR_ASSIGN_GLOBAL, index);
 
 		} else {
 			EmitBytes(OP_GET_GLOBAL, index);
@@ -415,7 +411,9 @@ void Compiler::VarDeclaration() {
 		ErrorAtPrevious(UNEXPECTED_TOKEN, "Expected identifier after 'rat' keyword");
 	}
 
+
 	uint8_t IdIndex = SafeAddConstant(identifier);
+	
 	if (match(EQUALS)) {
 		advance();
 		expression(true); // expression will always allow assignment, regardless of parameter
@@ -423,7 +421,14 @@ void Compiler::VarDeclaration() {
 	else {
 		EmitByte(OP_NONE);
 	}
-	EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
+
+	if (ct == COMPILE_SCRIPT) {
+		EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
+	}
+	else if (ct == COMPILE_RUNNABLE) {
+		EmitBytes(OP_DEFINE_LOCAL, IdIndex);	// tie the name with the stack slot
+		EmitByte(OP_NONE);  // push some value so the local variable doesn't get popped
+	}
 }
 
 
@@ -473,7 +478,7 @@ void Compiler::IfStatement() {
 
 
 void Compiler::WhileStatement() {
-	short Loopstart = this->CurrentChunk->GetSize() - 1;
+	short Loopstart = CurrentChunk()->GetSize() - 1;
 	expression(true);  // loop condition
 	consume(COLON, "expected ':' after expression");
 
@@ -499,7 +504,7 @@ void Compiler::RepeatStatement() {
 
 	EmitByte(OP_REPEAT);
 
-	short Loopstart = this->CurrentChunk->GetSize() - 1;
+	short Loopstart = CurrentChunk()->GetSize() - 1;
 
 	uint8_t BlockCode = block();
 	switch (BlockCode) {
@@ -525,7 +530,8 @@ void Compiler::RunnableDeclaration() {
 	consume(RIGHT_PAREN, "Expected ')' after argument list");
 	consume(COLON, "Expected ':' after function declaration");
 
-	this->CurrentChunk = new Chunk(CurrentChunk);
+	CurrentBody = new RunnableValue(CurrentBody, new Chunk, 0, identifier.GetLexeme());
+	this->ct = COMPILE_RUNNABLE;
 
 	uint8_t BlockCode = block();
 	switch (BlockCode)
@@ -538,12 +544,12 @@ void Compiler::RunnableDeclaration() {
 
 
 	advance();
-	Chunk *FunctionChunk = CurrentChunk;
-	uint8_t arity = 0;
 
-	CurrentChunk = CurrentChunk->GetEnclosing();
+	RunnableValue* rv = CurrentBody;
+	CurrentBody = CurrentBody->GetEnclosing();
+	this->ct = COMPILE_SCRIPT;
 
-	uint8_t index = SafeAddConstant(FunctionChunk, arity, identifier.GetLexeme());
+	uint8_t index = SafeAddConstant(rv);
 	EmitBytes(OP_DEFINE_RUNNABLE, index);
 }
 
@@ -553,7 +559,7 @@ uint8_t Compiler::SafeAddConstant(Token constant){
 	// adding a constant to the chunk, wrapped in a try-catch block
 	uint8_t index;
 	try {
-		index = this->CurrentChunk->AddConstant(constant);
+		index = CurrentBody->GetChunk()->AddConstant(constant);
 	}
 	catch (std::string e) {
 		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
@@ -563,10 +569,11 @@ uint8_t Compiler::SafeAddConstant(Token constant){
 	return index;
 }
 
-uint8_t Compiler::SafeAddConstant(Chunk *ByteCode, uint8_t arity, std::string& name) {
+uint8_t Compiler::SafeAddConstant(Value *v) {
+	// objects that have to be defined as values before insertion
 	uint8_t index;
 	try {
-		index = CurrentChunk->AddConstant(ByteCode, arity, name);
+		index = CurrentBody->GetChunk()->AddConstant(v);
 	}
 	catch (std::string e) {
 		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
@@ -635,16 +642,20 @@ void Compiler::consume(TokenType type, std::string ErrorMsg) {
 	ErrorAtCurrent(UNEXPECTED_TOKEN, ErrorMsg);
 }
 
+Chunk *Compiler::CurrentChunk() {
+	return CurrentBody->GetChunk();
+}
+
 void Compiler::EmitByte(uint8_t byte) {
-	CurrentChunk->Append(byte);
+	CurrentChunk()->Append(byte);
 }
 
 void Compiler::EmitBytes(uint8_t byte1, uint8_t byte2) {
-	CurrentChunk->Append(byte1, byte2);
+	CurrentChunk()->Append(byte1, byte2);
 }
 
 void Compiler::EmitReturn() {
-	CurrentChunk->Append(OP_RETURN);
+	CurrentChunk()->Append(OP_RETURN);
 }
 
 
@@ -657,7 +668,7 @@ short Compiler::EmitJump(Opcode JumpInstruction) {
 		case OP_JUMP_IF_FALSE:
 			EmitByte(JumpInstruction);
 			EmitBytes(0, 0);
-			index = CurrentChunk->GetSize() - 1;
+			index = CurrentChunk()->GetSize() - 1;
 			return index;
 
 		default:
@@ -667,18 +678,18 @@ short Compiler::EmitJump(Opcode JumpInstruction) {
 }
 
 void Compiler::PatchJump(short JumpIndex) {
-	short CurrentIndex = CurrentChunk->GetSize() - 1;
+	short CurrentIndex = CurrentChunk()->GetSize() - 1;
 	if (CurrentIndex < JumpIndex) ErrorAtCurrent(INTERNAL_ERROR, "");
 
-	CurrentChunk->PatchJump(JumpIndex, CurrentIndex - JumpIndex);
+	CurrentChunk()->PatchJump(JumpIndex, CurrentIndex - JumpIndex);
 }
 
 void Compiler::PatchLoop(short LoopStart) {
 	EmitByte(OP_LOOP);
 	EmitBytes(0, 0);
 
-	short CurrentIndex = CurrentChunk->GetSize() - 1;
+	short CurrentIndex = CurrentChunk()->GetSize() - 1;
 	if (CurrentIndex < LoopStart) ErrorAtCurrent(INTERNAL_ERROR, "");
 
-	CurrentChunk->PatchJump(CurrentIndex, CurrentIndex - LoopStart);
+	CurrentChunk()->PatchJump(CurrentIndex, CurrentIndex - LoopStart);
 }

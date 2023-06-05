@@ -7,8 +7,8 @@ bool IsIntegerValue(Value *f) {
 	return false;
 }
 
-Interpreter::Interpreter(Chunk* chunk) {
-	this->chunk = chunk;
+Interpreter::Interpreter(RunnableValue* body) {
+	this->body = body;
 	this->objects = nullptr;
 	stack.count = 0;
 
@@ -26,7 +26,7 @@ Interpreter::~Interpreter() {
 }
 
 int Interpreter::interpret() {
-	while (!(chunk->IsAtEnd())) {
+	while (!(CurrentChunk()->IsAtEnd())) {
 		try {
 			RunCommand();
 		}
@@ -40,7 +40,7 @@ int Interpreter::interpret() {
 
 void Interpreter::RunCommand() {
 #ifdef DEBUG_TRACE_STACK
-	int offset = chunk->GetOffset();
+	int offset = CurrentChunk()->GetOffset();
 #endif // DEBUG_TRACE_STACK
 
 #define BINARY_NUM_OP(op)  {\
@@ -48,8 +48,8 @@ void Interpreter::RunCommand() {
 	Value *a = pop(); \
 	if (b->GetType() == Value::NUM_T && a->GetType() == Value::NUM_T){\
 		\
-		float n1 = ((NumValue *)a)->GetValue(); \
-		float n2 = ((NumValue *)b)->GetValue(); \
+		float n1 = GetNumValue(a); \
+		float n2 = GetNumValue(b); \
 		push(NewObject(n1 op n2));\
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
@@ -61,8 +61,8 @@ void Interpreter::RunCommand() {
 	Value *a = pop(); \
 	if (b->GetType() == Value::NUM_T && a->GetType() == Value::NUM_T){\
 		\
-		float n1 = ((NumValue *)a)->GetValue(); \
-		float n2 = ((NumValue *)b)->GetValue(); \
+		float n1 = GetNumValue(a); \
+		float n2 = GetNumValue(b); \
 		push(NewObject((bool)(n1 op n2)));\
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
@@ -74,14 +74,13 @@ void Interpreter::RunCommand() {
 	Value *a = pop(); \
 	if (IsIntegerValue(b) && IsIntegerValue(a)){\
 		\
-		int n1 = ((NumValue *)a)->GetValue(); \
-		int n2 = ((NumValue *)b)->GetValue(); \
+		int n1 = GetNumValue(a); \
+		int n2 = GetNumValue(b); \
 		push(NewObject((float)(n1 op n2))); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-integer");\
 	}\
 }
-
 
 #define BINARY_ASSIGN_OP(op, IsPlus) {\
 \
@@ -89,7 +88,7 @@ void Interpreter::RunCommand() {
 	Value *b = pop(); \
 	if (a->GetType() == Value::NUM_T && b->GetType() == Value::NUM_T){\
 		NumValue *na = (NumValue *)a;\
-		na->SetValue(na->GetValue() op ((NumValue *)b)->GetValue());\
+		na->SetValue(GetNumValue(a) op GetNumValue(b));\
 		push(na); \
 	} else {\
 		std::string msg = "Can only perform this operation on two numbers"; \
@@ -108,21 +107,21 @@ void Interpreter::RunCommand() {
 		NumValue *num1 = (NumValue *)a; \
 		NumValue *num2 = (NumValue *)b; \
 		\
-		num1->SetValue((int)(num1->GetValue()) op (int)(num2->GetValue())); \
+		num1->SetValue((int)GetNumValue(a) op (int)GetNumValue(b)); \
 		push(num1); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform bitwise operations on non-integer types");\
 	}\
 }
 
-	uint8_t opcode = chunk->advance();
+	uint8_t opcode = CurrentChunk()->advance();
 	switch (opcode)
 	{
 		case OP_NEWLINE: {
 			if (stack.count > 0) std::cout << "\n\n\n";
 			break; 
 		} 
-		case OP_CONSTANT:	push(chunk->ReadConstant(chunk->advance())); break;
+		case OP_CONSTANT:	push(CurrentChunk()->ReadConstant(CurrentChunk()->advance())); break;
 		case OP_POP:		pop();	break;
 
 		case OP_NONE: {
@@ -143,7 +142,7 @@ void Interpreter::RunCommand() {
 			Value *a = pop();
 
 			if (a->GetType() == Value::NUM_T) {
-				float n = ((NumValue*)a)->GetValue();
+				float n = GetNumValue(a);
 				push(new NumValue(-n));
 			}
 			else {
@@ -158,13 +157,13 @@ void Interpreter::RunCommand() {
 			Value::datatype t = a->GetType();
 			switch (t) {
 				case Value::NUM_T: {
-					float n = ((NumValue*)a)->GetValue();
+					float n = GetNumValue(a);
 					if (n / 1 == n)	push(new NumValue(~(int)n));
 					else error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer");
 					break;
 				}
 				case Value::BOOL_T: {
-					bool b = ((BoolValue*)a)->GetValue();
+					bool b = GetBoolValue(a);
 					push(NewObject(!b));
 					break;
 				}
@@ -205,7 +204,7 @@ void Interpreter::RunCommand() {
 		case OP_GREATER:	BINARY_COMP_OP(>); break;
 
 		case OP_DEFINE_GLOBAL: {
-			uint8_t IdIndex = chunk->advance();
+			uint8_t IdIndex = CurrentChunk()->advance();
 			std::string identifier = GetConstantStr(IdIndex);
 
 			Value* v = pop();
@@ -214,7 +213,7 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_SET_GLOBAL: {
-			uint8_t IdIndex = chunk->advance();
+			uint8_t IdIndex = CurrentChunk()->advance();
 			std::string identifier = GetConstantStr(IdIndex);
 
 			Value* v = peek(0); // want to keep value on the stack in case the assignment is part of an expression
@@ -233,33 +232,33 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
-		case OP_INC: {
+		case OP_INC_GLOBAL: {
 			Value* var = FindGlobal();
 
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't increment a non-number value");
 			}
 			NumValue* num = (NumValue*)var;
-			num->SetValue(num->GetValue() + 1);
+			num->SetValue(GetNumValue(num) + 1);
 			
 			push(num);
 			break;
 		}
 		
-		case OP_DEC: {
+		case OP_DEC_GLOBAL: {
 			Value* var = FindGlobal();
 
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't decrement a non-number value");
 			}
 			NumValue* num = (NumValue*)var;
-			num->SetValue(num->GetValue() - 1);
+			num->SetValue(GetNumValue(num) - 1);
 			push(num);
 
 			break;
 		}
 
-		case OP_ADD_ASSIGN: {
+		case OP_ADD_ASSIGN_GLOBAL: {
 			switch (peek(0)->GetType()) {
 				case Value::STRING_T: {
 					StrValue* b = (StrValue*)pop();
@@ -278,50 +277,50 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
-		case OP_SUB_ASSIGN:			BINARY_ASSIGN_OP(-, false);	break;
-		case OP_MULTIPLY_ASSIGN:	BINARY_ASSIGN_OP(*, false); break;
-		case OP_DIVIDE_ASSIGN:		BINARY_ASSIGN_OP(/, false); break;
+		case OP_SUB_ASSIGN_GLOBAL:			BINARY_ASSIGN_OP(-, false);	break;
+		case OP_MULTIPLY_ASSIGN_GLOBAL:	BINARY_ASSIGN_OP(*, false); break;
+		case OP_DIVIDE_ASSIGN_GLOBAL:		BINARY_ASSIGN_OP(/, false); break;
 
-		case OP_BIT_AND_ASSIGN:		BINARY_BIT_ASSIGN_OP(&);	break;
-		case OP_BIT_OR_ASSIGN:		BINARY_BIT_ASSIGN_OP(|);	break;
-		case OP_BIT_XOR_ASSIGN:		BINARY_BIT_ASSIGN_OP(^);	break;
-		case OP_SHIFTL_ASSIGN:		BINARY_BIT_ASSIGN_OP(<<);	break;
-		case OP_SHIFTR_ASSIGN:		BINARY_BIT_ASSIGN_OP(>>);	break;
+		case OP_BIT_AND_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(&);	break;
+		case OP_BIT_OR_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(|);	break;
+		case OP_BIT_XOR_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(^);	break;
+		case OP_SHIFTL_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(<<);	break;
+		case OP_SHIFTR_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(>>);	break;
 
 		case OP_JUMP_IF_TRUE: {
-			uint8_t JumpHighByte = this->chunk->advance();
-			uint8_t JumpLowByte = this->chunk->advance();
+			uint8_t JumpHighByte = this->CurrentChunk()->advance();
+			uint8_t JumpLowByte = this->CurrentChunk()->advance();
 
 			if (peek(0)->IsTruthy()) {
 				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
-				this->chunk->MoveIp(distance);
+				this->CurrentChunk()->MoveIp(distance);
 			}
 			break;
 		}
 		case OP_JUMP_IF_FALSE: {
-			uint8_t JumpHighByte = this->chunk->advance();
-			uint8_t JumpLowByte = this->chunk->advance();
+			uint8_t JumpHighByte = this->CurrentChunk()->advance();
+			uint8_t JumpLowByte = this->CurrentChunk()->advance();
 
 			if (!(peek(0)->IsTruthy())) {
 				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
-				this->chunk->MoveIp(distance);
+				this->CurrentChunk()->MoveIp(distance);
 			}
 			break;
 		}
 		case OP_JUMP: {
-			uint8_t JumpHighByte = this->chunk->advance();
-			uint8_t JumpLowByte = this->chunk->advance();
+			uint8_t JumpHighByte =	this->CurrentChunk()->advance();
+			uint8_t JumpLowByte =	this->CurrentChunk()->advance();
 
 			short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
-			this->chunk->MoveIp(distance);
+			this->CurrentChunk()->MoveIp(distance);
 			break;
 		}
 		case OP_LOOP: {
-			uint8_t JumpHighByte = this->chunk->advance();
-			uint8_t JumpLowByte = this->chunk->advance();
+			uint8_t JumpHighByte =	this->CurrentChunk()->advance();
+			uint8_t JumpLowByte =	this->CurrentChunk()->advance();
 
 			short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
-			this->chunk->MoveIp(-distance);
+			this->CurrentChunk()->MoveIp(-distance);
 			break;
 		}
 
@@ -339,21 +338,21 @@ void Interpreter::RunCommand() {
 			if (!IsIntegerValue(v)) error(INTERNAL_ERROR, "");
 
 			NumValue* nv = (NumValue*)v;
-			v->SetValue(nv->GetValue() - 1);
+			v->SetValue(GetNumValue(v) - 1);
 
-			int n = ((NumValue*)v)->GetValue();
+			int n = GetNumValue(v);
 
 			if (n == 0) {
 				pop();
-				this->chunk->MoveIp(4);  // skip over 'op_loop' instruction
+				CurrentChunk()->MoveIp(4);  // skip over 'op_loop' instruction
 			}
 
 			break;
 		}
 
 		case OP_DEFINE_RUNNABLE: {
-			uint8_t index = chunk->advance();
-			Value *v = chunk->ReadConstant(index);
+			uint8_t index = CurrentChunk()->advance();
+			Value *v = CurrentChunk()->ReadConstant(index);
 			if (v->GetType() != Value::RUNNABLE_T) error(INTERNAL_ERROR, "");
 			
 			RunnableValue* runnable = (RunnableValue *)v;
@@ -368,10 +367,13 @@ void Interpreter::RunCommand() {
 			switch (called->GetType())
 			{
 				case Value::RUNNABLE_T: {
-					Chunk *code = ((RunnableValue*)pop())->GetChunk();
-					Chunk* RunnableChunk = new Chunk(code, this->chunk);
+					RunnableValue *runnable = ((RunnableValue*)pop());
+					RunnableValue* NewBody = new RunnableValue(runnable, this->body);
 
-					this->chunk = RunnableChunk;
+					Chunk* c = NewBody->GetChunk();
+					c->MoveIp(-1 * c->GetOffset());
+					
+					SetBody(NewBody);
 					break;
 				}
 
@@ -383,8 +385,9 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_RETURN: {
-			this->chunk = this->chunk->GetEnclosing();
-			if (this->chunk == nullptr) error(RETURN_FROM_SCRIPT, "Can't return from the global script");
+			SetBody(this->body->GetEnclosing());
+
+			if (this->body == nullptr) error(RETURN_FROM_SCRIPT, "Can't return from the global script");
 
 			break;
 		}
@@ -398,6 +401,16 @@ void Interpreter::RunCommand() {
 	std::cout << TraceStack(offset);
 #endif
 }
+
+
+Chunk* Interpreter::CurrentChunk() {
+	return this->body->GetChunk();
+}
+
+void Interpreter::SetBody(RunnableValue* body) {
+	this->body = body;
+}
+
 
 Value *Interpreter::pop() {
 	if (this->stack.count <= 0) {
@@ -421,12 +434,25 @@ Value *Interpreter::peek(int depth) {
 	return this->stack.stk[stack.count - 1 - depth];
 }
 
+float Interpreter::GetNumValue(Value* v) {
+	return ((NumValue*)v)->GetValue();
+}
+
+bool Interpreter::GetBoolValue(Value* v) {
+	return ((BoolValue*)v)->GetValue();
+}
+
+std::string Interpreter::GetStrValue(Value* v) {
+	return ((StrValue*)v)->GetValue();
+}
+
 NumValue *Interpreter::NewObject(float f) {
 	NumValue* res = new NumValue(f);
 	res->next = this->objects;
 	this->objects = res;
 	return res;
 }
+
 
 BoolValue* Interpreter::NewObject(bool b) {
 	BoolValue* res = new BoolValue(b);
@@ -450,13 +476,13 @@ Value* Interpreter::NewObject(nullptr_t p) {
 }
 
 std::string Interpreter::GetConstantStr(uint8_t index) {
-	Value* v = this->chunk->ReadConstant(index);
+	Value* v = CurrentChunk()->ReadConstant(index);
 	return ((StrValue*)v)->GetValue();
 }
 
 
 Value* Interpreter::FindGlobal() {
-	uint8_t IdIndex = this->chunk->advance();
+	uint8_t IdIndex = CurrentChunk()->advance();
 	std::string identifier = GetConstantStr(IdIndex);
 	Value* var = this->globals[identifier];
 
@@ -479,7 +505,7 @@ std::string Interpreter::TraceStack(int CodeOffset) {
 }
 
 void Interpreter::error(int e, std::string msg) {
-	int line = this->chunk->CountLines();
+	int line = CurrentChunk()->CountLines();
 	std::cerr << "[Runtime error in line " << line << "]: " << msg << "\n";
 	throw -e;
 }

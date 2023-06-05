@@ -112,6 +112,26 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string 
 	this->type = RUNNABLE_T;
 }
 
+RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, uint8_t arity, std::string name) {
+	this->ByteCode = ByteCode;
+	this->StrRep = name;
+	this->arity = arity;
+
+	this->enclosing = enclosing;
+
+	this->type = RUNNABLE_T;
+}
+
+RunnableValue::RunnableValue(RunnableValue* ToCopy, RunnableValue *enclosing) {
+	this->ByteCode = ToCopy->ByteCode;
+	this->StrRep = ToCopy->StrRep;
+	this->arity = ToCopy->arity;
+	this->type = RUNNABLE_T;
+
+	this->enclosing = enclosing;
+}
+
+
 RunnableValue::~RunnableValue() {
 	delete this->ByteCode;
 	this->ByteCode = nullptr;
@@ -123,4 +143,8 @@ struct Chunk *RunnableValue::GetChunk() {
 
 uint8_t RunnableValue::GetArity() {
 	return this->arity;
+}
+
+RunnableValue* RunnableValue::GetEnclosing() {
+	return this->enclosing;
 }

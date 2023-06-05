@@ -34,23 +34,24 @@ typedef enum {
 	OP_LESS,
 
 	OP_DEFINE_GLOBAL,
+	OP_DEFINE_LOCAL,
 
 	OP_SET_GLOBAL,
 	OP_GET_GLOBAL,
 
-	OP_INC,
-	OP_DEC,
+	OP_INC_GLOBAL,
+	OP_DEC_GLOBAL,
 
-	OP_ADD_ASSIGN,
-	OP_SUB_ASSIGN,
-	OP_MULTIPLY_ASSIGN,
-	OP_DIVIDE_ASSIGN,
+	OP_ADD_ASSIGN_GLOBAL,
+	OP_SUB_ASSIGN_GLOBAL,
+	OP_MULTIPLY_ASSIGN_GLOBAL,
+	OP_DIVIDE_ASSIGN_GLOBAL,
 
-	OP_BIT_AND_ASSIGN,
-	OP_BIT_OR_ASSIGN,
-	OP_BIT_XOR_ASSIGN,
-	OP_SHIFTL_ASSIGN,
-	OP_SHIFTR_ASSIGN,
+	OP_BIT_AND_ASSIGN_GLOBAL,
+	OP_BIT_OR_ASSIGN_GLOBAL,
+	OP_BIT_XOR_ASSIGN_GLOBAL,
+	OP_SHIFTL_ASSIGN_GLOBAL,
+	OP_SHIFTR_ASSIGN_GLOBAL,
 
 	OP_JUMP,
 	OP_JUMP_IF_TRUE,
@@ -74,16 +75,13 @@ private:
 	short ip;
 
 	std::vector<Value *> constants;
-	struct Chunk* enclosing;
 
 public:
 	Chunk();
-	Chunk(Chunk* enclosing);
-	Chunk(Chunk *code, Chunk* enclosing);
 	~Chunk();
 
 	uint8_t AddConstant(Token);
-	uint8_t AddConstant(Chunk *ByteCode, uint8_t arity, std::string name);	// to add runnables
+	uint8_t AddConstant(Value *v);	// to add runnables
 	void ClearConstants();
 
 	void Append(uint8_t);
@@ -98,7 +96,6 @@ public:
 
 	short GetOffset();
 	short GetSize();
-	Chunk* GetEnclosing();
 	void MoveIp(short distance);
 
 	void PatchJump(short JumpIndex, short distance);

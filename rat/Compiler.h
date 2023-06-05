@@ -3,6 +3,7 @@
 #include "Token.h"
 #include "Interpreter.h"
 #include "Chunk.h"
+#include "Value.h"
 
 #include <vector>
 #include <iostream>
@@ -29,7 +30,7 @@ public:
 	Compiler(std::vector<Token>&);
 	~Compiler();
 
-	Chunk* Compile();
+	RunnableValue* Compile();
 
 private:
 	std::vector<Token> tokens;
@@ -45,6 +46,7 @@ private:
 		UNCLOSED_BLOCK,
 		FLOAT_OVERFLOW,  // errors that are common with chunk
 		CONSTANTS_OVERFLOW,
+		BLOCKED_RUNNABLE,
 
 		BREAK_IF = 150,
 		BREAK_WHILE,
@@ -53,6 +55,14 @@ private:
 		BREAK_RUNNABLE,
 		BREAK_RAT
 	} ExitCode;// compile error code
+
+
+	static enum ChunkType {
+		COMPILE_SCRIPT,
+		COMPILE_RUNNABLE,
+	};  // type of chunk currently being compiled
+
+	enum ChunkType ct;
 
 	typedef void (Compiler::* ParseFunction) (bool CanAssign);
 	
@@ -65,7 +75,8 @@ private:
 	ParseRule RuleTable[NumTokenTypes];
 	
 
-	Chunk* CurrentChunk;
+	RunnableValue* CurrentBody;
+	Chunk *CurrentChunk();
 
 	void error(int e, std::string msg, Token where);
 	void ErrorAtPrevious(int e, std::string msg);
@@ -116,6 +127,6 @@ private:
 
 
 	uint8_t SafeAddConstant(Token Constant);
-	uint8_t SafeAddConstant(Chunk *ByteCode, uint8_t arity, std::string& name);
+	uint8_t SafeAddConstant(Value *v);  // for objects that have to be defined as values before insertion
 };
 
