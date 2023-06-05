@@ -8,6 +8,15 @@ Debugger::Debugger(Chunk *chunk, std::string name){
 	ChunkName = name;
 	code = chunk->GetCode();
 
+	std::vector<Value*>& constants = chunk->GetConstants();
+	for (int i = 0; i < constants.size(); i++) {
+		if (constants[i]->GetType() == Value::RUNNABLE_T) {
+			RunnableValue* r = (RunnableValue*)constants[i];
+			Debugger d = Debugger(r->GetChunk(), r->ToString());
+			d.DisassembleChunk();
+		}
+	}
+
 	offset = 0;
 }
 
@@ -63,8 +72,7 @@ void Debugger::DisassembleInstruction() {
 			SimpleOperation("OP_NEWLINE");
 			break;
 		}
-	
-		case OP_RETURN:		SimpleOperation("OP_RETURN");	break;
+
 		case OP_POP:		SimpleOperation("OP_POP");		break;
 
 		case OP_ADD:		SimpleOperation("OP_ADD");		break;
@@ -116,6 +124,11 @@ void Debugger::DisassembleInstruction() {
 
 		case OP_REPEAT:				SimpleOperation("OP_REPEAT");		break;
 		case OP_END_REPEAT:			SimpleOperation("OP_END_REPEAT");	break;
+
+
+		case OP_DEFINE_RUNNABLE:	ConstantOperation("OP_DEFINE_RUNNABLE");	break;
+		case OP_CALL:				ConstantOperation("OP_CALL");				break;
+		case OP_RETURN:				SimpleOperation("OP_RETURN");				break;
 
 		default: {
 			std::cout << "Unrecognized instruction" << instruction << "\t\n";

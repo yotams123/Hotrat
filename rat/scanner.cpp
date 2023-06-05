@@ -85,6 +85,9 @@ Token Scanner::ScanToken() {
 		case 'w': if (CheckWord("hile"))	return Token(WHILE, "while");	break;
 		case 'x': if (CheckWord("or"))		return Token(XOR, "xor");		break;
 
+		case '.':	return Token(DOT, ".");
+		case ',':	return Token(COMMA, ",");
+
 		case '{': return Token(LEFT_BRACE, "{");		break;
 		case '}': return Token(RIGHT_BRACE, "}");		break;
 		case '[': return Token(LEFT_BRACKET, "[");		break;

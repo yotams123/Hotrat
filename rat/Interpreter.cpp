@@ -241,7 +241,8 @@ void Interpreter::RunCommand() {
 			}
 			NumValue* num = (NumValue*)var;
 			num->SetValue(num->GetValue() + 1);
-
+			
+			push(num);
 			break;
 		}
 		
@@ -350,6 +351,43 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
+		case OP_DEFINE_RUNNABLE: {
+			uint8_t index = chunk->advance();
+			Value *v = chunk->ReadConstant(index);
+			if (v->GetType() != Value::RUNNABLE_T) error(INTERNAL_ERROR, "");
+			
+			RunnableValue* runnable = (RunnableValue *)v;
+			AddGlobal(runnable->ToString(), runnable);
+			break;
+		}
+
+
+		case OP_CALL: {
+			Value* called = FindGlobal();
+
+			switch (called->GetType())
+			{
+				case Value::RUNNABLE_T: {
+					Chunk *code = ((RunnableValue*)pop())->GetChunk();
+					Chunk* RunnableChunk = new Chunk(code, this->chunk);
+
+					this->chunk = RunnableChunk;
+					break;
+				}
+
+				default:
+					error(TYPE_ERROR, "Can't call an object that isn't a runnable"); break;
+				}
+
+			break;
+		}
+
+		case OP_RETURN: {
+			this->chunk = this->chunk->GetEnclosing();
+			if (this->chunk == nullptr) error(RETURN_FROM_SCRIPT, "Can't return from the global script");
+
+			break;
+		}
 
 		default:
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + opcode);

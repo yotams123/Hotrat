@@ -9,6 +9,7 @@ public:
 		NUM_T,
 		BOOL_T,
 		STRING_T,
+		RUNNABLE_T,
 	} datatype;
 
 protected:
@@ -17,7 +18,7 @@ protected:
 
 public:
 	Value();
-	~Value();
+	virtual ~Value();
 
 	virtual void SetValue(float n);
 	virtual void SetValue(bool b);
@@ -27,7 +28,7 @@ public:
 	Value* next;
 	datatype GetType();
 
-	std::string ToString();
+	std::string& ToString();
 
 	bool IsTruthy();
 };
@@ -58,8 +59,6 @@ public:
 
 
 class StrValue : public Value {
-protected:
-
 public:
 	StrValue(std::string& value);
 
@@ -67,4 +66,20 @@ public:
 	void SetValue(std::string& s);
 
 	std::string operator+(StrValue next);
+};
+
+
+struct Chunk;
+class RunnableValue : public Value {
+protected:
+	struct Chunk *ByteCode;
+	uint8_t arity;	// how many parameters the function accepts
+	std::string name;
+
+public:
+	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name);
+	~RunnableValue() override;
+
+	Chunk* GetChunk();
+	uint8_t GetArity();
 };

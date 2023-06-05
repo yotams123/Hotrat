@@ -8,7 +8,6 @@
 
 typedef enum {
 	OP_NEWLINE,
-	OP_RETURN,
 
 	OP_CONSTANT,
 	OP_POP,
@@ -61,6 +60,10 @@ typedef enum {
 	OP_REPEAT, 
 	OP_END_REPEAT,
 
+	OP_DEFINE_RUNNABLE,
+	OP_CALL,
+	OP_RETURN,
+
 	OP_NEGATE,
 } Opcode;
 
@@ -75,9 +78,12 @@ private:
 
 public:
 	Chunk();
+	Chunk(Chunk* enclosing);
+	Chunk(Chunk *code, Chunk* enclosing);
 	~Chunk();
 
 	uint8_t AddConstant(Token);
+	uint8_t AddConstant(Chunk *ByteCode, uint8_t arity, std::string name);	// to add runnables
 	void ClearConstants();
 
 	void Append(uint8_t);
@@ -87,10 +93,12 @@ public:
 	Value *ReadConstant(uint8_t index);
 
 	std::vector<uint8_t>& GetCode();
+	std::vector<Value*>& GetConstants();
 	bool IsAtEnd();
 
 	short GetOffset();
 	short GetSize();
+	Chunk* GetEnclosing();
 	void MoveIp(short distance);
 
 	void PatchJump(short JumpIndex, short distance);

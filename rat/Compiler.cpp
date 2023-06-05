@@ -22,8 +22,8 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[FALSE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[NONE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 
-	RuleTable[AND] = { nullptr, &Compiler::binary, PREC_AND };
-	RuleTable[OR] = { nullptr, &Compiler::binary, PREC_OR };
+	RuleTable[AND] =	{ nullptr, &Compiler::binary, PREC_AND };
+	RuleTable[OR] =		{ nullptr, &Compiler::binary, PREC_OR };
 
 	RuleTable[PLUS] =	{ nullptr,			&Compiler::binary, PREC_TERM };
 	RuleTable[MINUS] =	{ &Compiler::unary, &Compiler::binary, PREC_TERM };
@@ -46,14 +46,14 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[GREATER] =		{ nullptr, &Compiler::binary, PREC_COMPARE };
 	RuleTable[LESS] =			{ nullptr, &Compiler::binary, PREC_COMPARE };
 
-	RuleTable[LEFT_PAREN] = { &Compiler::grouping, nullptr, PREC_NONE };
+	RuleTable[LEFT_PAREN] = { &Compiler::grouping, &Compiler::call, PREC_LITERAL};
 
-	RuleTable[BANG] = { &Compiler::unary, nullptr, PREC_UNARY };
+	RuleTable[BANG] =		{ &Compiler::unary, nullptr, PREC_UNARY };
 
 	RuleTable[TOKEN_EOF] =		{ nullptr, nullptr, PREC_END };
 	RuleTable[TOKEN_NEWLINE] =	{ nullptr, nullptr, PREC_END };
 
-	RuleTable[RAT] = { &Compiler::declaration, nullptr, PREC_NONE };
+	RuleTable[RAT] =		{ &Compiler::declaration, nullptr, PREC_NONE };
 
 	RuleTable[IDENTIFIER] = { &Compiler::variable, nullptr, PREC_LITERAL };
 
@@ -267,6 +267,24 @@ void Compiler::variable(bool CanAssign) {
 	
 }
 
+void Compiler::call(bool CanAssign) {
+	Token name = peek(-1);
+	advance();	// advance over opening parenthesis
+
+	while (!match(TOKEN_EOF) && !match(RIGHT_PAREN)) {
+		expression(true);		// parse arguments
+
+		if (!match(COMMA)) advance();
+		else break;
+	}
+
+	consume(RIGHT_PAREN, "Expected ')' after argument list");
+	uint8_t index = SafeAddConstant(name);
+
+	EmitBytes(OP_CALL, index);
+}
+
+
 void Compiler::unary(bool CanAssign) {
 	Token op = advance();
 
@@ -343,6 +361,12 @@ void Compiler::declaration(bool CanAssign) {
 		case RAT: {
 			advance();
 			VarDeclaration();
+			break;
+		}
+
+		case RUNNABLE: {
+			advance();
+			RunnableDeclaration();
 			break;
 		}
 
@@ -492,12 +516,44 @@ void Compiler::RepeatStatement() {
 }
 
 
-uint8_t Compiler::SafeAddConstant(Token Constant) {
-	// adding a constant to the chunk, wrapped in a try-catch block
+void Compiler::RunnableDeclaration() {
+	if (!match(IDENTIFIER)) ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected function name");
 
+	Token identifier = advance();
+
+	consume(LEFT_PAREN, "Expected '(' after function name");
+	consume(RIGHT_PAREN, "Expected ')' after argument list");
+	consume(COLON, "Expected ':' after function declaration");
+
+	this->CurrentChunk = new Chunk(CurrentChunk);
+
+	uint8_t BlockCode = block();
+	switch (BlockCode)
+	{
+		case BREAK_RUNNABLE:	EmitBytes(OP_NONE, OP_RETURN);	 break;
+		case UNCLOSED_BLOCK:	ErrorAtCurrent(UNCLOSED_BLOCK, "Expected 'endrunnable'");
+
+		default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected 'endrunnable'");
+	}
+
+
+	advance();
+	Chunk *FunctionChunk = CurrentChunk;
+	uint8_t arity = 0;
+
+	CurrentChunk = CurrentChunk->GetEnclosing();
+
+	uint8_t index = SafeAddConstant(FunctionChunk, arity, identifier.GetLexeme());
+	EmitBytes(OP_DEFINE_RUNNABLE, index);
+}
+
+
+
+uint8_t Compiler::SafeAddConstant(Token constant){
+	// adding a constant to the chunk, wrapped in a try-catch block
 	uint8_t index;
 	try {
-		index = CurrentChunk->AddConstant(Constant);
+		index = this->CurrentChunk->AddConstant(constant);
 	}
 	catch (std::string e) {
 		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
@@ -506,6 +562,20 @@ uint8_t Compiler::SafeAddConstant(Token Constant) {
 
 	return index;
 }
+
+uint8_t Compiler::SafeAddConstant(Chunk *ByteCode, uint8_t arity, std::string& name) {
+	uint8_t index;
+	try {
+		index = CurrentChunk->AddConstant(ByteCode, arity, name);
+	}
+	catch (std::string e) {
+		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Float overflow")		ErrorAtCurrent(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
+	}
+
+	return index;
+}
+
 
 Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 	return RuleTable[type];

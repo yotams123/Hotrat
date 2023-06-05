@@ -37,6 +37,7 @@ private:
 		STACK_OVERFLOW,
 		TYPE_ERROR,
 		UNDEFINED_RAT,
+		RETURN_FROM_SCRIPT,  // 'return' statement outside a runnable
 
 		INTERNAL_ERROR,
 	} ExitCode;

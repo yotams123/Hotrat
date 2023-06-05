@@ -8,7 +8,6 @@ Value::Value() {
 }
 
 Value::~Value() {
-
 }
 
 Value::datatype Value::GetType() {
@@ -24,17 +23,18 @@ void Value::SetValue(bool b) {
 	((BoolValue*)this)->SetValue(b);
 }
 
-std::string Value::ToString() {	
+std::string& Value::ToString() {	
 	return this->StrRep;
 }
 
 bool Value::IsTruthy() {
 	switch (this->type)
 	{
-		case NUM_T:		return ((NumValue*)this)->GetValue() != 0;		break;
-		case BOOL_T:	return ((BoolValue*)this)->GetValue();			break;
-		case STRING_T:	return ((StrValue*)this)->GetValue() != "";		break;
-		case NONE_T:	return false;									break;
+		case NUM_T:			return ((NumValue*)this)->GetValue() != 0;		break;
+		case BOOL_T:		return ((BoolValue*)this)->GetValue();			break;
+		case STRING_T:		return ((StrValue*)this)->GetValue() != "";		break;
+		case RUNNABLE_T:	return true;									break;
+		case NONE_T:		return false;									break;
 
 		default:	return false;
 	}
@@ -101,4 +101,26 @@ void StrValue::SetValue(std::string& s) {
 
 std::string StrValue::operator+(StrValue next) {
 	return this->StrRep + next.GetValue();
+}
+
+
+RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name) {
+	this->ByteCode = ByteCode;
+	this->StrRep = name;
+	this->arity = arity;
+
+	this->type = RUNNABLE_T;
+}
+
+RunnableValue::~RunnableValue() {
+	delete this->ByteCode;
+	this->ByteCode = nullptr;
+}
+
+struct Chunk *RunnableValue::GetChunk() {
+	return this->ByteCode;
+}
+
+uint8_t RunnableValue::GetArity() {
+	return this->arity;
 }

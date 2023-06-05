@@ -62,6 +62,8 @@ enum TokenType {
 	COLD, /* constant */
 	BANG, /* ! */
 
+	COMMA, DOT,
+
 	TOKEN_ERROR, TOKEN_NEWLINE, TOKEN_EOF,
 };
 
@@ -77,5 +79,5 @@ public:
 	std::string ToString();
 
 	TokenType GetType();
-	std::string GetLexeme();
+	std::string& GetLexeme();
 };

@@ -77,6 +77,7 @@ private:
 	// parsing
 	void literal(bool CanAssign);
 	void variable(bool CanAssign);
+	void call(bool CanAssign);
 	void unary(bool CanAssign);
 	void binary(bool CanAssign);
 	void grouping(bool CanAssign);
@@ -85,6 +86,8 @@ private:
 	void declaration(bool CanAssign);
 
 	void VarDeclaration();
+	void RunnableDeclaration();
+
 	void ExpressionStatement();
 	
 	uint8_t block();		// returns code matching type of closing token
@@ -111,6 +114,8 @@ private:
 	void PatchJump(short JumpIndex);
 	void PatchLoop(short LoopStart);
 
-	uint8_t SafeAddConstant(Token constant);
+
+	uint8_t SafeAddConstant(Token Constant);
+	uint8_t SafeAddConstant(Chunk *ByteCode, uint8_t arity, std::string& name);
 };
 

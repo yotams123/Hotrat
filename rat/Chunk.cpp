@@ -9,6 +9,23 @@ Chunk::Chunk() {
 	enclosing = nullptr;
 }
 
+
+Chunk::Chunk(Chunk *enclosing) {
+	this->ip = 0;
+
+	this->constants = std::vector<Value*>();
+	this->enclosing = enclosing;
+}
+
+Chunk::Chunk(Chunk *code, Chunk* enclosing) {
+	this->ip = 0;
+
+	this->constants = code->constants;
+	this->enclosing = enclosing;
+
+	this->code = code->GetCode();
+}
+
 Chunk::~Chunk() {
 	std::vector<Value*>::iterator i;
 	for (i = constants.begin(); i < constants.end(); i++)
@@ -19,6 +36,10 @@ Chunk::~Chunk() {
 
 uint8_t Chunk::advance() {
 	return code[ip++];
+}
+
+std::vector<Value*>& Chunk::GetConstants() {
+	return this->constants;
 }
 
 
@@ -52,6 +73,20 @@ uint8_t Chunk::AddConstant(Token constant) {
 	constants.push_back(val);
 	return (uint8_t)(constants.size() - 1); // index of constant
 }
+
+uint8_t Chunk::AddConstant(Chunk *ByteCode, uint8_t arity, std::string name) {
+
+	if (constants.size() >= 256) {
+		throw std::string("Constants overflow");
+	}
+
+	RunnableValue* val = new RunnableValue(ByteCode, arity, name);
+
+	constants.push_back(val);
+	return (uint8_t)(constants.size() - 1); // index of constant
+}
+
+
 
 Value *Chunk::ReadConstant(uint8_t index) {
 	return constants[index];
@@ -119,6 +154,10 @@ short Chunk::GetSize() {
 	return this->code.size();
 }
 
+
+Chunk* Chunk::GetEnclosing() {
+	return this->enclosing;
+}
 
 void Chunk::MoveIp(short distance) {
 	ip += distance;
