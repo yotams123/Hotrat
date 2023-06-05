@@ -78,6 +78,7 @@ private:
 
 public:
 	Chunk();
+	Chunk(Chunk *);
 	~Chunk();
 
 	uint8_t AddConstant(Token);

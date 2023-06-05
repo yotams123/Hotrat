@@ -8,6 +8,13 @@ Chunk::Chunk() {
 	constants = std::vector<Value*>();
 }
 
+Chunk::Chunk(Chunk *ToCopy) {
+	this->code = ToCopy->code;
+	this->constants = ToCopy->constants;
+
+	this->ip = 0;
+}
+
 Chunk::~Chunk() {
 	this->ClearConstants();
 }

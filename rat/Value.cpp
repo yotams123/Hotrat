@@ -122,8 +122,8 @@ RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, u
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(RunnableValue* ToCopy, RunnableValue *enclosing) {
-	this->ByteCode = ToCopy->ByteCode;
+RunnableValue::RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing) {
+	this->ByteCode = chunk;
 	this->StrRep = ToCopy->StrRep;
 	this->arity = ToCopy->arity;
 	this->type = RUNNABLE_T;

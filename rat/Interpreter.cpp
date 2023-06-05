@@ -368,10 +368,9 @@ void Interpreter::RunCommand() {
 			{
 				case Value::RUNNABLE_T: {
 					RunnableValue *runnable = ((RunnableValue*)pop());
-					RunnableValue* NewBody = new RunnableValue(runnable, this->body);
 
-					Chunk* c = NewBody->GetChunk();
-					c->MoveIp(-1 * c->GetOffset());
+					Chunk* c = new Chunk(runnable->GetChunk());
+					RunnableValue* NewBody = new RunnableValue(runnable, c, this->body);
 					
 					SetBody(NewBody);
 					break;
