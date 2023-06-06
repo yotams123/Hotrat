@@ -112,21 +112,34 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string 
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, uint8_t arity, std::string name) {
+RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string name) {
 	this->ByteCode = ByteCode;
-	this->StrRep = name;
-	this->arity = arity;
+
+	this->name = name;
+	this->StrRep = "<Runnable '" + name + "'>";
+	
+	this->arity = args.size();
 
 	this->enclosing = enclosing;
+
+	for (int i = 0; i < args.size(); i++) this->locals.push_back(args[i]);
+	
+	this->FrameStart = 0; // temp value
 
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing) {
+RunnableValue::RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart) {
 	this->ByteCode = chunk;
-	this->StrRep = ToCopy->StrRep;
+
+	this->name = ToCopy->name;
+	this->StrRep = "<Runnable '" + name + "'>";
+	
 	this->arity = ToCopy->arity;
 	this->type = RUNNABLE_T;
+	this->locals = ToCopy->locals;
+
+	this->FrameStart = FrameStart;
 
 	this->enclosing = enclosing;
 }
@@ -141,10 +154,36 @@ struct Chunk *RunnableValue::GetChunk() {
 	return this->ByteCode;
 }
 
+std::string& RunnableValue::GetName() {
+	return this->name;
+}
+
 uint8_t RunnableValue::GetArity() {
 	return this->arity;
 }
 
+uint8_t RunnableValue::GetFrameStart() {
+	return this->FrameStart;
+}
+
+std::vector<std::string>& RunnableValue::GetLocals() {
+	return this->locals;
+}
+
 RunnableValue* RunnableValue::GetEnclosing() {
 	return this->enclosing;
+}
+
+uint8_t RunnableValue::AddLocal(std::string Identifier) {
+	this->locals.push_back(Identifier);
+	return this->locals.size() - 1; // return the index of the last inserted item
+}
+
+
+short RunnableValue::ResolveLocal(std::string Identifier) {
+	for (int i = 0; i < this->locals.size(); i++) {
+		if (this->locals[i] == Identifier) return i;
+	}
+
+	return -1;
 }

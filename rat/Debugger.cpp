@@ -103,6 +103,9 @@ void Debugger::DisassembleInstruction() {
 		case OP_GET_GLOBAL:			ConstantOperation("OP_GET_GLOBAL");		break;
 		case OP_CONSTANT:			ConstantOperation("OP_CONSTANT");		break;
 
+		case OP_GET_LOCAL:			ConstantOperation("OP_GET_LOCAL");		break;
+		case OP_SET_LOCAL:			ConstantOperation("OP_SET_LOCAL");		break;
+
 		case OP_INC_GLOBAL:				ConstantOperation("OP_INC_GLOBAL");			break;
 		case OP_DEC_GLOBAL:				ConstantOperation("OP_DEC_GLOBAL");			break;
 

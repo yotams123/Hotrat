@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <sstream>
-#include <map>
+#include <vector>
 
 class Value {
 public:
@@ -78,15 +78,23 @@ protected:
 	std::string name;
 
 	RunnableValue* enclosing;
-	std::map<std::string, nullptr_t> locals;
+	
+	std::vector<std::string> locals;
+	uint8_t FrameStart; // index at which the frame starts
 
 public:
 	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name);
-	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, uint8_t arity, std::string name);
-	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing);		// when calling in the runtime, call a copy of the value, to allow recursion (ip)
+	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string name);	// for use during compile time
+	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart);	// for use during the runtime
 	~RunnableValue() override;
 
 	Chunk* GetChunk();
+	std::string& GetName();
 	uint8_t GetArity();
 	RunnableValue* GetEnclosing();
+	uint8_t GetFrameStart();
+	std::vector<std::string>& GetLocals();
+
+	uint8_t AddLocal(std::string Identifier);
+	short ResolveLocal(std::string Identifier);
 };

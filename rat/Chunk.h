@@ -34,7 +34,6 @@ typedef enum {
 	OP_LESS,
 
 	OP_DEFINE_GLOBAL,
-	OP_DEFINE_LOCAL,
 
 	OP_SET_GLOBAL,
 	OP_GET_GLOBAL,
@@ -52,6 +51,26 @@ typedef enum {
 	OP_BIT_XOR_ASSIGN_GLOBAL,
 	OP_SHIFTL_ASSIGN_GLOBAL,
 	OP_SHIFTR_ASSIGN_GLOBAL,
+
+
+	OP_SET_LOCAL,
+	OP_GET_LOCAL,
+
+	OP_INC_LOCAL,
+	OP_DEC_LOCAL,
+
+	OP_ADD_ASSIGN_LOCAL,
+	OP_SUB_ASSIGN_LOCAL,
+	OP_MULTIPLY_ASSIGN_LOCAL,
+	OP_DIVIDE_ASSIGN_LOCAL,
+
+	OP_BIT_AND_ASSIGN_LOCAL,
+	OP_BIT_OR_ASSIGN_LOCAL,
+	OP_BIT_XOR_ASSIGN_LOCAL,
+	OP_SHIFTL_ASSIGN_LOCAL,
+	OP_SHIFTR_ASSIGN_LOCAL,
+
+
 
 	OP_JUMP,
 	OP_JUMP_IF_TRUE,
@@ -81,9 +100,10 @@ public:
 	Chunk(Chunk *);
 	~Chunk();
 
-	uint8_t AddConstant(Token);
+	uint8_t AddConstant(Token&);
 	uint8_t AddConstant(Value *v);	// to add runnables
 	void ClearConstants();
+	short FindRunnable(Token& name);
 
 	void Append(uint8_t);
 	void Append(uint8_t, uint8_t);

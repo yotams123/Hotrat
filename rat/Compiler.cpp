@@ -181,101 +181,155 @@ uint8_t Compiler::block() {
 
 void Compiler::variable(bool CanAssign) {
 	Token Identifier = advance();
-	uint8_t index = SafeAddConstant(Identifier);
+	uint8_t index;
+	enum VarType {global, local};
+	VarType CurrentVar = global;
 
+	if (ct == COMPILE_RUNNABLE) {
+		short sindex = ResolveLocal(Identifier);
+
+		if (sindex == -1) {
+			sindex = SafeAddConstant(Identifier); // saved as short so it can represent negative values
+		}
+		else  CurrentVar = local;
+
+		index = (uint8_t)sindex;
+	}
+	else if (ct == COMPILE_SCRIPT) {
+		index = SafeAddConstant(Identifier);
+	}
+
+	Opcode op;
 	if (CanAssign) {
 		if (match(EQUALS)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SET_GLOBAL, index);
+			if (CurrentVar == local) op = OP_SET_LOCAL;
+			else if (CurrentVar == global) op = OP_SET_GLOBAL;
 
 		}
 		else if (match(PLUS_PLUS)) {
-			EmitBytes(OP_INC_GLOBAL, index);
+			if (CurrentVar == local) op = OP_INC_LOCAL;
+			else if (CurrentVar == global) op = OP_INC_GLOBAL;
 			advance();
 
 		}
 		else if (match(MINUS_MINUS)) {
-			EmitBytes(OP_DEC_GLOBAL, index);
+			if (CurrentVar == local) op = OP_DEC_LOCAL;
+			else if (CurrentVar == global) op = OP_DEC_GLOBAL;
 			advance();
 
 		}
 		else if (match(PLUS_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_ADD_ASSIGN_GLOBAL, index);
+			if (CurrentVar == local) op = OP_ADD_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_ADD_ASSIGN_GLOBAL;
 
 		}
 		else if (match(MINUS_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SUB_ASSIGN_GLOBAL, index);
+			if (CurrentVar == local) op = OP_SUB_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_SUB_ASSIGN_GLOBAL;
 
 		}
 		else if (match(STAR_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_MULTIPLY_ASSIGN_GLOBAL, index);
+
+			if (CurrentVar == local) op = OP_MULTIPLY_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_MULTIPLY_ASSIGN_GLOBAL;
 
 		}
 		else if (match(SLASH_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_DIVIDE_ASSIGN_GLOBAL, index);
+
+			if (CurrentVar == local) op = OP_DIVIDE_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_DIVIDE_ASSIGN_GLOBAL;
 
 		}
 		else if (match(BIT_AND_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_BIT_AND_ASSIGN_GLOBAL, index);
+			if (CurrentVar == local) op = OP_BIT_AND_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_BIT_AND_ASSIGN_GLOBAL;
 
 		}
 		else if (match(BIT_OR_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_BIT_OR_ASSIGN_GLOBAL, index);
+			if (CurrentVar == local) op = OP_BIT_OR_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_BIT_OR_ASSIGN_GLOBAL;
 
 		}
 		else if (match(BIT_XOR_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_BIT_XOR_ASSIGN_GLOBAL, index);
+
+			if (CurrentVar == local) op = OP_BIT_XOR_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_BIT_XOR_ASSIGN_GLOBAL;
 
 		}
 		else if (match(SHIFT_LEFT_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SHIFTL_ASSIGN_GLOBAL, index);
+			if (CurrentVar == local) op = OP_SHIFTL_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_SHIFTL_ASSIGN_GLOBAL;
 
 		}
 		else if (match(SHIFT_RIGHT_ASSIGN)) {
 			advance();
 			expression(true);
-			EmitBytes(OP_SHIFTR_ASSIGN_GLOBAL, index);
+			if (CurrentVar == local) op = OP_SHIFTR_ASSIGN_LOCAL;
+			else if (CurrentVar == global) op = OP_SHIFTR_ASSIGN_GLOBAL;
 
 		} else {
-			EmitBytes(OP_GET_GLOBAL, index);
+			if (CurrentVar == local) op = OP_GET_LOCAL;
+			else if (CurrentVar == global) op = OP_GET_GLOBAL;
 		}
 	}
 	else {
-		EmitBytes(OP_GET_GLOBAL, index);
+		if (CurrentVar == local) op = OP_GET_LOCAL;
+		else if (CurrentVar == global) op = OP_GET_GLOBAL;
 	}
+
+	EmitBytes(op, index);
 	
 }
 
 void Compiler::call(bool CanAssign) {
 	Token name = peek(-1);
+
+	RunnableValue* r = nullptr;
+	if (ct == COMPILE_SCRIPT) {
+		short RunnableIndex = CurrentChunk()->FindRunnable(name);
+		
+		if (RunnableIndex == -1) ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
+		
+		r = (RunnableValue*)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex));
+	}
+	else if (ct == COMPILE_RUNNABLE) {
+		Chunk* global = this->CurrentBody->GetEnclosing()->GetChunk();
+
+		short RunnableIndex = global->FindRunnable(name);
+
+		if (RunnableIndex == -1) ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
+
+		r = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex));
+	}
+	if (r == nullptr) error(INTERNAL_ERROR, "", name);
+
 	advance();	// advance over opening parenthesis
 
-	while (!match(TOKEN_EOF) && !match(RIGHT_PAREN)) {
-		expression(true);		// parse arguments
+	uint8_t arity = ArgumentList();
 
-		if (!match(COMMA)) advance();
-		else break;
-	}
-
-	consume(RIGHT_PAREN, "Expected ')' after argument list");
 	uint8_t index = SafeAddConstant(name);
+
+	
+	if (arity != r->GetArity()) error(UNDEFINED_RUNNABLE, "Rat '" + name.GetLexeme() + "' takes " + std::to_string(r->GetArity()) 
+		+ " arguments, but " + std::to_string(arity) +"were passed", name);
 
 	EmitBytes(OP_CALL, index);
 }
@@ -412,8 +466,15 @@ void Compiler::VarDeclaration() {
 	}
 
 
-	uint8_t IdIndex = SafeAddConstant(identifier);
-	
+	uint8_t IdIndex;
+	if (ct == COMPILE_SCRIPT) {
+		IdIndex = SafeAddConstant(identifier);
+	}
+	else if (ct == COMPILE_RUNNABLE) {
+		IdIndex = AddLocal(identifier);
+	}
+
+
 	if (match(EQUALS)) {
 		advance();
 		expression(true); // expression will always allow assignment, regardless of parameter
@@ -424,10 +485,6 @@ void Compiler::VarDeclaration() {
 
 	if (ct == COMPILE_SCRIPT) {
 		EmitBytes(OP_DEFINE_GLOBAL, IdIndex);
-	}
-	else if (ct == COMPILE_RUNNABLE) {
-		EmitBytes(OP_DEFINE_LOCAL, IdIndex);	// tie the name with the stack slot
-		EmitByte(OP_NONE);  // push some value so the local variable doesn't get popped
 	}
 }
 
@@ -527,10 +584,10 @@ void Compiler::RunnableDeclaration() {
 	Token identifier = advance();
 
 	consume(LEFT_PAREN, "Expected '(' after function name");
-	consume(RIGHT_PAREN, "Expected ')' after argument list");
+	std::vector<std::string> args = ParameterList();
 	consume(COLON, "Expected ':' after function declaration");
 
-	CurrentBody = new RunnableValue(CurrentBody, new Chunk, 0, identifier.GetLexeme());
+	CurrentBody = new RunnableValue(CurrentBody, new Chunk, args, identifier.GetLexeme());
 	this->ct = COMPILE_RUNNABLE;
 
 	uint8_t BlockCode = block();
@@ -554,6 +611,36 @@ void Compiler::RunnableDeclaration() {
 }
 
 
+uint8_t Compiler::ArgumentList() {
+	uint8_t ArgCount = 0;
+	while (!match(RIGHT_PAREN) && !match(TOKEN_EOF)) {
+		expression(true);
+		ArgCount++;
+		if (match(COMMA)) advance();
+	}
+
+	consume(RIGHT_PAREN, "Expected ')' after argument list");
+
+	return ArgCount;
+}
+
+std::vector<std::string> Compiler::ParameterList() {
+	std::vector<std::string> args;
+	
+	Token name = peek(-2);
+
+	while (!match(RIGHT_PAREN) && !match(TOKEN_EOF)) {
+		consume(IDENTIFIER, "Expected parameter name");
+		args.push_back(peek(-1).GetLexeme());
+		if (match(COMMA)) advance();
+	}
+
+	if (args.size() > 255) error(TABLE_OVERFLOW, "Runnable cannot have over 255 parameters", name);
+	consume(RIGHT_PAREN, "Expected ')' after argument list");
+
+	return args;
+}
+
 
 uint8_t Compiler::SafeAddConstant(Token constant){
 	// adding a constant to the chunk, wrapped in a try-catch block
@@ -562,7 +649,7 @@ uint8_t Compiler::SafeAddConstant(Token constant){
 		index = CurrentBody->GetChunk()->AddConstant(constant);
 	}
 	catch (std::string e) {
-		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Constants overflow")	ErrorAtCurrent(TABLE_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
 		if (e == "Float overflow")		ErrorAtCurrent(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
 	}
 
@@ -576,11 +663,24 @@ uint8_t Compiler::SafeAddConstant(Value *v) {
 		index = CurrentBody->GetChunk()->AddConstant(v);
 	}
 	catch (std::string e) {
-		if (e == "Constants overflow")	ErrorAtCurrent(CONSTANTS_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Constants overflow")	ErrorAtCurrent(TABLE_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
 		if (e == "Float overflow")		ErrorAtCurrent(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
 	}
 
 	return index;
+}
+
+
+uint8_t Compiler::AddLocal(Token Identifier) {
+	if (this->CurrentBody->GetLocals().size() >= 255) {
+		ErrorAtPrevious(TABLE_OVERFLOW, "Too many local variables in a runnable");
+	}
+
+	return this->CurrentBody->AddLocal(Identifier.GetLexeme());
+}
+
+short Compiler::ResolveLocal(Token Identifier) {
+	return this->CurrentBody->ResolveLocal(Identifier.GetLexeme());
 }
 
 

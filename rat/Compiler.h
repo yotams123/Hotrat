@@ -45,8 +45,9 @@ private:
 		INTERNAL_ERROR,  // Errors that have to do with the compiler, not the user.
 		UNCLOSED_BLOCK,
 		FLOAT_OVERFLOW,  // errors that are common with chunk
-		CONSTANTS_OVERFLOW,
+		TABLE_OVERFLOW,
 		BLOCKED_RUNNABLE,
+		UNDEFINED_RUNNABLE,
 
 		BREAK_IF = 150,
 		BREAK_WHILE,
@@ -107,6 +108,9 @@ private:
 	void WhileStatement();
 	void RepeatStatement();
 
+	uint8_t ArgumentList();
+	std::vector<std::string> ParameterList();
+
 	ParseRule& GetRule(TokenType);
 	void ParsePrecedence(Precedence);
 
@@ -128,5 +132,8 @@ private:
 
 	uint8_t SafeAddConstant(Token Constant);
 	uint8_t SafeAddConstant(Value *v);  // for objects that have to be defined as values before insertion
+
+	uint8_t AddLocal(Token identifier);
+	short ResolveLocal(Token identifier);
 };
 

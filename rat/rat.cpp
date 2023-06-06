@@ -18,6 +18,7 @@
 
 // TODO: local variables
 // TODO: change implementation of simple values
+// TODO: garbage collector
 
 int main(int argc, char *argv[])
 {

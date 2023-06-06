@@ -32,7 +32,7 @@ private:
 
 	Value* objects;
 
-	static enum {
+	static enum ExitCode {
 		INTERPRET_OK = 0,
 		UNRECOGNIZED_OPCODE = 201,
 		STACK_UNDERFLOW,
@@ -42,7 +42,7 @@ private:
 		RETURN_FROM_SCRIPT,  // 'return' statement outside a runnable
 
 		INTERNAL_ERROR,
-	} ExitCode;
+	};
 
 
 	BoolValue *NewObject(bool b);
@@ -59,7 +59,7 @@ private:
 	bool GetConstantBool(uint8_t index);
 
 	std::string TraceStack(int CodeOffset);
-	void error(int e, std::string msg);
+	void error(ExitCode e, std::string msg);
 
 	std::unordered_map<std::string, Value*> globals;
 	void AddGlobal(std::string&, Value*);

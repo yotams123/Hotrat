@@ -28,7 +28,7 @@ std::vector<Value*>& Chunk::GetConstants() {
 }
 
 
-uint8_t Chunk::AddConstant(Token constant) {
+uint8_t Chunk::AddConstant(Token& constant) {
 
 	if (constants.size() >= 256) {
 		throw std::string("Constants overflow");
@@ -86,6 +86,18 @@ void Chunk::ClearConstants() {
 			continue;
 		}
 	}
+}
+
+short Chunk::FindRunnable(Token& identifier) {
+	std::string name = identifier.GetLexeme();
+	for (int i = 0; i < this->constants.size(); i++) {
+		if (constants[i]->GetType() == Value::RUNNABLE_T) {
+			RunnableValue* r = (RunnableValue *)constants[i];
+			if (r->GetName() == name) return i;
+		}
+	}
+
+	return -1;
 }
 
 void Chunk::Append(uint8_t byte) {

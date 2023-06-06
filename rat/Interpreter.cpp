@@ -30,7 +30,7 @@ int Interpreter::interpret() {
 		try {
 			RunCommand();
 		}
-		catch (int e) {
+		catch (ExitCode e) {
 			return e;
 		}
 	}
@@ -217,7 +217,6 @@ void Interpreter::RunCommand() {
 			std::string identifier = GetConstantStr(IdIndex);
 
 			Value* v = peek(0); // want to keep value on the stack in case the assignment is part of an expression
-			// eg.  'if i = 18:' will evaluate to 'true'
 
 			if (globals[identifier] == nullptr) error(UNDEFINED_RAT, "Setting value to an undefined rat");
 
@@ -229,6 +228,21 @@ void Interpreter::RunCommand() {
 			Value* var = FindGlobal();
 
 			push(var);
+			break;
+		}
+
+		case OP_GET_LOCAL: {
+			uint8_t FrameSlot = CurrentChunk()->advance();
+			Value* var = this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1];
+
+			push(var);
+			break;
+		}
+
+		case OP_SET_LOCAL: {
+			uint8_t FrameSlot = CurrentChunk()->advance();
+			this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1] = pop();
+
 			break;
 		}
 
@@ -244,7 +258,8 @@ void Interpreter::RunCommand() {
 			push(num);
 			break;
 		}
-		
+
+
 		case OP_DEC_GLOBAL: {
 			Value* var = FindGlobal();
 
@@ -278,7 +293,7 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_SUB_ASSIGN_GLOBAL:			BINARY_ASSIGN_OP(-, false);	break;
-		case OP_MULTIPLY_ASSIGN_GLOBAL:	BINARY_ASSIGN_OP(*, false); break;
+		case OP_MULTIPLY_ASSIGN_GLOBAL:		BINARY_ASSIGN_OP(*, false); break;
 		case OP_DIVIDE_ASSIGN_GLOBAL:		BINARY_ASSIGN_OP(/, false); break;
 
 		case OP_BIT_AND_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(&);	break;
@@ -356,7 +371,7 @@ void Interpreter::RunCommand() {
 			if (v->GetType() != Value::RUNNABLE_T) error(INTERNAL_ERROR, "");
 			
 			RunnableValue* runnable = (RunnableValue *)v;
-			AddGlobal(runnable->ToString(), runnable);
+			AddGlobal(runnable->GetName(), runnable);
 			break;
 		}
 
@@ -367,10 +382,11 @@ void Interpreter::RunCommand() {
 			switch (called->GetType())
 			{
 				case Value::RUNNABLE_T: {
-					RunnableValue *runnable = ((RunnableValue*)pop());
+					RunnableValue *runnable = ((RunnableValue*)called);
+					uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
 
 					Chunk* c = new Chunk(runnable->GetChunk());
-					RunnableValue* NewBody = new RunnableValue(runnable, c, this->body);
+					RunnableValue* NewBody = new RunnableValue(runnable, c, this->body, FrameIndex);
 					
 					SetBody(NewBody);
 					break;
@@ -384,6 +400,12 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_RETURN: {
+			Value* ReturnVal = pop();
+
+			this->stack.count = this->body->GetFrameStart();  // pop frame off the stack
+
+			push(ReturnVal);
+
 			SetBody(this->body->GetEnclosing());
 
 			if (this->body == nullptr) error(RETURN_FROM_SCRIPT, "Can't return from the global script");
@@ -423,7 +445,7 @@ Value *Interpreter::pop() {
 }
 
 void Interpreter::push(Value *value) {
-	if (stack.count == StackSize) throw STACK_OVERFLOW;
+	if (stack.count == StackSize) error(STACK_OVERFLOW, "Stack limit exceeded");
 	stack.stk[stack.count++] = value;
 	return;
 }
@@ -479,6 +501,17 @@ std::string Interpreter::GetConstantStr(uint8_t index) {
 	return ((StrValue*)v)->GetValue();
 }
 
+bool Interpreter::GetConstantBool(uint8_t index) {
+	Value* v = CurrentChunk()->ReadConstant(index);
+	return ((BoolValue*)v)->GetValue();
+}
+
+float Interpreter::GetConstantNum(uint8_t index) {
+	Value* v = CurrentChunk()->ReadConstant(index);
+	return ((NumValue*)v)->GetValue();
+}
+
+
 
 Value* Interpreter::FindGlobal() {
 	uint8_t IdIndex = CurrentChunk()->advance();
@@ -503,8 +536,8 @@ std::string Interpreter::TraceStack(int CodeOffset) {
 	return (std::to_string(CodeOffset) + "\t" + trace);
 }
 
-void Interpreter::error(int e, std::string msg) {
+void Interpreter::error(ExitCode e, std::string msg) {
 	int line = CurrentChunk()->CountLines();
 	std::cerr << "[Runtime error in line " << line << "]: " << msg << "\n";
-	throw -e;
+	throw e;
 }
