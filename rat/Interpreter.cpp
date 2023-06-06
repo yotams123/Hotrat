@@ -82,9 +82,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
-#define BINARY_ASSIGN_OP(op, IsPlus) {\
+#define BINARY_ASSIGN_OP(a, op, IsPlus) {\
 \
-	Value *a = FindGlobal(); \
 	Value *b = pop(); \
 	if (a->GetType() == Value::NUM_T && b->GetType() == Value::NUM_T){\
 		NumValue *na = (NumValue *)a;\
@@ -98,9 +97,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
-#define BINARY_BIT_ASSIGN_OP(op) {\
+#define BINARY_BIT_ASSIGN_OP(a, op) {\
 \
-	Value *a = FindGlobal(); \
 	Value *b = pop(); \
 	\
 	if (IsIntegerValue(a) && IsIntegerValue(b) ){\
@@ -232,8 +230,8 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_GET_LOCAL: {
-			uint8_t FrameSlot = CurrentChunk()->advance();
-			Value* var = this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1];
+			
+			Value* var = FindLocal();
 
 			push(var);
 			break;
@@ -241,7 +239,7 @@ void Interpreter::RunCommand() {
 
 		case OP_SET_LOCAL: {
 			uint8_t FrameSlot = CurrentChunk()->advance();
-			this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1] = pop();
+			this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1] = peek(0);
 
 			break;
 		}
@@ -259,9 +257,36 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
+		case OP_INC_LOCAL: {
+			Value* var = FindLocal();
+
+			if (var->GetType() != Value::NUM_T) {
+				error(TYPE_ERROR, "Can't increment a non-number value");
+			}
+			NumValue* num = (NumValue*)var;
+			num->SetValue(GetNumValue(num) + 1);
+
+			push(num);
+			break;
+		}
+
+
 
 		case OP_DEC_GLOBAL: {
 			Value* var = FindGlobal();
+
+			if (var->GetType() != Value::NUM_T) {
+				error(TYPE_ERROR, "Can't decrement a non-number value");
+			}
+			NumValue* num = (NumValue*)var;
+			num->SetValue(GetNumValue(num) - 1);
+			push(num);
+
+			break;
+		}
+
+		case OP_DEC_LOCAL: {
+			Value* var = FindLocal();
 
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't decrement a non-number value");
@@ -287,20 +312,144 @@ void Interpreter::RunCommand() {
 					break;
 				}
 
-				default: BINARY_ASSIGN_OP(+, true);
+				default:{
+					Value* a = FindGlobal();
+					BINARY_ASSIGN_OP(a, +, false);
+					break;
+				}
+			}
+			break;
+		}
+		
+		case OP_ADD_ASSIGN_LOCAL: {
+			switch (peek(0)->GetType()) {
+			case Value::STRING_T: {
+				StrValue* b = (StrValue*)pop();
+
+				Value* va = FindLocal();
+				if (va->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
+
+				StrValue* a = (StrValue*)va;
+				a->SetValue((std::string&)(*a + *b));
+				push(a);
+				break;
+			}
+
+			default: {
+				Value* a = FindLocal();
+				BINARY_ASSIGN_OP(a, +, false);
+				break;
+			}
 			}
 			break;
 		}
 
-		case OP_SUB_ASSIGN_GLOBAL:			BINARY_ASSIGN_OP(-, false);	break;
-		case OP_MULTIPLY_ASSIGN_GLOBAL:		BINARY_ASSIGN_OP(*, false); break;
-		case OP_DIVIDE_ASSIGN_GLOBAL:		BINARY_ASSIGN_OP(/, false); break;
 
-		case OP_BIT_AND_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(&);	break;
-		case OP_BIT_OR_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(|);	break;
-		case OP_BIT_XOR_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(^);	break;
-		case OP_SHIFTL_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(<<);	break;
-		case OP_SHIFTR_ASSIGN_GLOBAL:		BINARY_BIT_ASSIGN_OP(>>);	break;
+
+		case OP_SUB_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_ASSIGN_OP(a, -, false);
+			break;
+		}
+
+		case OP_MULTIPLY_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_ASSIGN_OP(a, *, false);
+			break;
+		}
+
+		case OP_DIVIDE_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_ASSIGN_OP(a, /, false);
+			break;
+		}
+
+
+		case OP_SUB_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_ASSIGN_OP(a, -, false);
+			break;
+		}
+
+		case OP_MULTIPLY_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_ASSIGN_OP(a, *, false);
+			break;
+		}
+
+		case OP_DIVIDE_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_ASSIGN_OP(a, / , false);
+			break;
+		}
+
+
+
+
+		case OP_BIT_AND_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_BIT_ASSIGN_OP(a, &);
+			break;
+		}
+
+		case OP_BIT_OR_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_BIT_ASSIGN_OP(a, |);
+			break;
+		}
+
+		case OP_BIT_XOR_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_BIT_ASSIGN_OP(a, ^);
+			break;
+		}
+
+
+		case OP_BIT_AND_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_BIT_ASSIGN_OP(a, &);
+			break;
+		}
+
+		case OP_BIT_OR_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_BIT_ASSIGN_OP(a, | );
+			break;
+		}
+
+		case OP_BIT_XOR_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_BIT_ASSIGN_OP(a, ^);
+			break;
+		}
+
+
+
+
+		case OP_SHIFTL_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_BIT_ASSIGN_OP(a, <<);
+			break;
+		}
+
+		case OP_SHIFTR_ASSIGN_GLOBAL: {
+			Value* a = FindGlobal();
+			BINARY_BIT_ASSIGN_OP(a, >>);
+			break;
+		}
+
+
+		case OP_SHIFTL_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_BIT_ASSIGN_OP(a, << );
+			break;
+		}
+
+		case OP_SHIFTR_ASSIGN_LOCAL: {
+			Value* a = FindLocal();
+			BINARY_BIT_ASSIGN_OP(a, >> );
+			break;
+		}
 
 		case OP_JUMP_IF_TRUE: {
 			uint8_t JumpHighByte = this->CurrentChunk()->advance();
@@ -512,6 +661,12 @@ float Interpreter::GetConstantNum(uint8_t index) {
 }
 
 
+Value* Interpreter::FindLocal() {
+	uint8_t FrameSlot = CurrentChunk()->advance();
+	Value* var = this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1];
+
+	return var;
+}
 
 Value* Interpreter::FindGlobal() {
 	uint8_t IdIndex = CurrentChunk()->advance();

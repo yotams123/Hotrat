@@ -329,7 +329,7 @@ void Compiler::call(bool CanAssign) {
 
 	
 	if (arity != r->GetArity()) error(UNDEFINED_RUNNABLE, "Rat '" + name.GetLexeme() + "' takes " + std::to_string(r->GetArity()) 
-		+ " arguments, but " + std::to_string(arity) +"were passed", name);
+		+ " arguments, but " + std::to_string(arity) + " were passed", name);
 
 	EmitBytes(OP_CALL, index);
 }
@@ -466,21 +466,20 @@ void Compiler::VarDeclaration() {
 	}
 
 
-	uint8_t IdIndex;
-	if (ct == COMPILE_SCRIPT) {
-		IdIndex = SafeAddConstant(identifier);
-	}
-	else if (ct == COMPILE_RUNNABLE) {
-		IdIndex = AddLocal(identifier);
-	}
-
-
 	if (match(EQUALS)) {
 		advance();
 		expression(true); // expression will always allow assignment, regardless of parameter
 	}
 	else {
 		EmitByte(OP_NONE);
+	}
+
+	uint8_t IdIndex;
+	if (ct == COMPILE_SCRIPT) {
+		IdIndex = SafeAddConstant(identifier);
+	}
+	else if (ct == COMPILE_RUNNABLE) {
+		IdIndex = AddLocal(identifier);
 	}
 
 	if (ct == COMPILE_SCRIPT) {

@@ -109,16 +109,30 @@ void Debugger::DisassembleInstruction() {
 		case OP_INC_GLOBAL:				ConstantOperation("OP_INC_GLOBAL");			break;
 		case OP_DEC_GLOBAL:				ConstantOperation("OP_DEC_GLOBAL");			break;
 
+		case OP_INC_LOCAL:				ConstantOperation("OP_INC_LOCAL");			break;
+		case OP_DEC_LOCAL:				ConstantOperation("OP_DEC_LOCAL");			break;
+
 		case OP_ADD_ASSIGN_GLOBAL:			ConstantOperation("OP_ADD_ASSIGN_GLOBAL");			break;
 		case OP_SUB_ASSIGN_GLOBAL:			ConstantOperation("OP_SUB_ASSIGN_GLOBAL");			break;
 		case OP_MULTIPLY_ASSIGN_GLOBAL:		ConstantOperation("OP_MULTIPLY_ASSIGN_GLOBAL");		break;
 		case OP_DIVIDE_ASSIGN_GLOBAL:		ConstantOperation("OP_DIVIDE_ASSIGN_GLOBAL");		break;
+
+		case OP_ADD_ASSIGN_LOCAL:			ConstantOperation("OP_ADD_ASSIGN_LOCAL");			break;
+		case OP_SUB_ASSIGN_LOCAL:			ConstantOperation("OP_SUB_ASSIGN_LOCAL");			break;
+		case OP_MULTIPLY_ASSIGN_LOCAL:		ConstantOperation("OP_MULTIPLY_ASSIGN_LOCAL");		break;
+		case OP_DIVIDE_ASSIGN_LOCAL:		ConstantOperation("OP_DIVIDE_ASSIGN_LOCAL");		break;
 
 		case OP_BIT_AND_ASSIGN_GLOBAL:		ConstantOperation("OP_BIT_AND_ASSIGN_GLOBAL");		break;
 		case OP_BIT_OR_ASSIGN_GLOBAL:		ConstantOperation("OP_BIT_OR_ASSIGN_GLOBAL");		break;
 		case OP_BIT_XOR_ASSIGN_GLOBAL:		ConstantOperation("OP_BIT_XOR_ASSIGN_GLOBAL");		break;
 		case OP_SHIFTL_ASSIGN_GLOBAL:		ConstantOperation("OP_SHIFTL_ASSIGN_GLOBAL");		break;
 		case OP_SHIFTR_ASSIGN_GLOBAL:		ConstantOperation("OP_SHIFTR_ASSIGN_GLOBAL");		break;
+
+		case OP_BIT_AND_ASSIGN_LOCAL:		ConstantOperation("OP_BIT_AND_ASSIGN_LOCAL");		break;
+		case OP_BIT_OR_ASSIGN_LOCAL:		ConstantOperation("OP_BIT_OR_ASSIGN_LOCAL");		break;
+		case OP_BIT_XOR_ASSIGN_LOCAL:		ConstantOperation("OP_BIT_XOR_ASSIGN_LOCAL");		break;
+		case OP_SHIFTL_ASSIGN_LOCAL:		ConstantOperation("OP_SHIFTL_ASSIGN_LOCAL");		break;
+		case OP_SHIFTR_ASSIGN_LOCAL:		ConstantOperation("OP_SHIFTR_ASSIGN_LOCAL");		break;
 
 		case OP_JUMP:				JumpOperation("OP_JUMP");			break;
 		case OP_JUMP_IF_TRUE:		JumpOperation("OP_JUMP_IF_TRUE");	break;

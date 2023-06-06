@@ -65,6 +65,8 @@ private:
 	void AddGlobal(std::string&, Value*);
 	Value* FindGlobal();
 
+	Value* FindLocal();
+
 public:
 	Interpreter(RunnableValue *);
 	~Interpreter();
