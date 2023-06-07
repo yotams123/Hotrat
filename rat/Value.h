@@ -3,28 +3,48 @@
 #include <sstream>
 #include <vector>
 
+class ObjectValue;
+
 class Value {
 public:
 	typedef enum {
 		NONE_T,
 		NUM_T,
 		BOOL_T,
-		STRING_T,
-		RUNNABLE_T,
+		OBJECT_T,
 	} datatype;
 
 protected:
 	datatype type;
 	std::string StrRep;
+	
+	typedef union data {
+		float n;
+		bool b;
+		ObjectValue* o;
+	};
+
+	data val;
 
 public:
 	Value();
-	virtual ~Value();
+	Value(float f);
+	Value(bool b);
+	Value(ObjectValue *o);
 
-	virtual void SetValue(float n);
-	virtual void SetValue(bool b);
-	
+	~Value();
+
+	void SetValue(float n);
+	void SetValue(bool b);
+	void SetValue(ObjectValue* o);
 	void SetAsNone();
+
+	float GetNum();
+	bool GetBool();
+	ObjectValue* GetObject();
+	bool IsNone();
+
+	bool IsObject();
 
 	Value* next;
 	datatype GetType();
@@ -34,32 +54,31 @@ public:
 	bool IsTruthy();
 };
 
-class NumValue : public Value {
-protected:
-	float value;
-
+class ObjectValue {
 public:
-	NumValue(float value);
+	typedef enum {
+		STRING_T,
+		RUNNABLE_T,
+	} ObjectType;
 
-	float GetValue();
-	void SetValue(float f);
+protected:
+	ObjectValue* next;
+	std::string StrRep;
 
+	ObjectType type;
+public:
+
+	ObjectType GetType();
+	std::string ToString();
+	
+	bool IsString();
+	bool IsRunnable();
+
+	void SetNext(ObjectValue* obj);
+	ObjectValue *GetNext();
 };
 
-
-class BoolValue : public Value {
-protected:
-	bool value;
-
-public:
-	BoolValue(bool value);
-
-	bool GetValue();
-	void SetValue(bool b);
-};
-
-
-class StrValue : public Value {
+class StrValue : public ObjectValue {
 public:
 	StrValue(std::string& value);
 
@@ -71,7 +90,7 @@ public:
 
 
 struct Chunk;
-class RunnableValue : public Value {
+class RunnableValue : public ObjectValue{
 protected:
 	struct Chunk *ByteCode;
 	uint8_t arity;	// how many parameters the function accepts
@@ -86,7 +105,7 @@ public:
 	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name);
 	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string name);	// for use during compile time
 	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart);	// for use during the runtime
-	~RunnableValue() override;
+	~RunnableValue();
 
 	Chunk* GetChunk();
 	std::string& GetName();

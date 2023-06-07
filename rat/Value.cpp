@@ -7,6 +7,31 @@ Value::Value() {
 	this->StrRep = "None";
 }
 
+Value::Value(float f) {
+	this->val.n = f;
+	this->type = NUM_T;
+
+	std::stringstream s;
+	s << f;
+	this->StrRep = s.str();
+}
+
+
+Value::Value(bool b) {
+	this->val.b = b;
+	this->type = BOOL_T;
+
+	if (b) this->StrRep = "true";
+	else this->StrRep = "false";
+}
+
+Value::Value(ObjectValue* o) {
+	this->val.o = o;
+	this->type = OBJECT_T;
+
+	this->StrRep = o->ToString();
+}
+
 Value::~Value() {
 }
 
@@ -16,12 +41,58 @@ Value::datatype Value::GetType() {
 
 
 void Value::SetValue(float f) {
-	((NumValue*)this)->SetValue(f);
+	this->type = NUM_T;
+	this->val.n = f;
+
+	std::stringstream s;
+	s << f;
+	this->StrRep = s.str();
 }
 
 void Value::SetValue(bool b) {
-	((BoolValue*)this)->SetValue(b);
+	this->type = BOOL_T;
+	this->val.b = b;
+
+	if (b) this->StrRep = "true";
+	else this->StrRep = "false";
 }
+
+void Value::SetValue(ObjectValue* o) {
+	this->type = OBJECT_T;
+	this->val.o = o;
+
+	this->StrRep = o->ToString();
+
+
+}
+
+void Value::SetAsNone() {
+	this->type = NONE_T;
+}
+
+
+
+float Value::GetNum() {
+	return this->val.n;
+}
+
+bool Value::GetBool() {
+	return this->val.b;
+}
+
+ObjectValue *Value::GetObject() {
+	return this->val.o;
+}
+
+bool Value::IsNone() {
+	return this->type == NONE_T;
+}
+
+bool Value::IsObject() {
+	return this->type == OBJECT_T;
+}
+
+
 
 std::string& Value::ToString() {	
 	return this->StrRep;
@@ -30,57 +101,48 @@ std::string& Value::ToString() {
 bool Value::IsTruthy() {
 	switch (this->type)
 	{
-		case NUM_T:			return ((NumValue*)this)->GetValue() != 0;		break;
-		case BOOL_T:		return ((BoolValue*)this)->GetValue();			break;
-		case STRING_T:		return ((StrValue*)this)->GetValue() != "";		break;
-		case RUNNABLE_T:	return true;									break;
+		case NUM_T:			return  this->GetNum() != 0;		break;
+		case BOOL_T:		return	this->GetBool();			break;
+		case OBJECT_T: {
+			ObjectValue* o = this->val.o;
+			switch (o->GetType())
+			{
+				case ObjectValue::STRING_T:		return ((StrValue*)o)->GetValue() != "";		break;
+				case ObjectValue::RUNNABLE_T:	return true;
+				default:
+					break;
+			}
+		}
+											break;
 		case NONE_T:		return false;									break;
 
 		default:	return false;
 	}
 }
 
-
-NumValue::NumValue(float value) {
-	this->value = value;
-	this->type = NUM_T;
-	
-	std::stringstream s;
-	s << value;
-	this->StrRep = s.str();
+ObjectValue::ObjectType ObjectValue::GetType() {
+	return this->type;
 }
 
-float NumValue::GetValue() {
-	return this->value;
+ObjectValue* ObjectValue::GetNext() {
+	return this->next;
 }
 
-void NumValue::SetValue(float f) {
-	this->value = f;
-
-	std::stringstream s;
-	s << f;
-	this->StrRep = s.str();
+void ObjectValue::SetNext(ObjectValue* obj) {
+	this->next = obj;
 }
 
+bool ObjectValue::IsString() {
+	return this->type == STRING_T;
+}
 
-BoolValue::BoolValue(bool value) {
-	this->value = value;
-	this->type = BOOL_T;
-
-	if (value) this->StrRep = "true";
-	else this->StrRep = "false";
+bool ObjectValue::IsRunnable() {
+	return this->type == RUNNABLE_T;
 }
 
 
-bool BoolValue::GetValue() {
-	return this->value;
-}
-
-void BoolValue::SetValue(bool b) {
-	this->value = b;
-
-	if (b) this->StrRep = "true";
-	else this->StrRep = "false";
+std::string ObjectValue::ToString() {
+	return this->StrRep;
 }
 
 

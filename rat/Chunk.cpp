@@ -5,7 +5,7 @@
 Chunk::Chunk() {
 	ip = 0;
 
-	constants = std::vector<Value*>();
+	constants = std::vector<Value>();
 }
 
 Chunk::Chunk(Chunk *ToCopy) {
@@ -23,7 +23,7 @@ uint8_t Chunk::advance() {
 	return code[ip++];
 }
 
-std::vector<Value*>& Chunk::GetConstants() {
+std::vector<Value>& Chunk::GetConstants() {
 	return this->constants;
 }
 
@@ -34,13 +34,13 @@ uint8_t Chunk::AddConstant(Token& constant) {
 		throw std::string("Constants overflow");
 	}
 
-	Value *val;
+	Value val;
 
 	TokenType t = constant.GetType();
 	switch (t) {
 		case NUM_LITERAL: {
 			try {
-				val = new NumValue(std::stof(constant.GetLexeme()));	break;
+				val = Value(std::stof(constant.GetLexeme()));	break;
 			}
 			catch (const std::exception& e) {
 				throw std::string("Float overflow");
@@ -48,18 +48,21 @@ uint8_t Chunk::AddConstant(Token& constant) {
 			break;
 		}
 
-		case TRUE:			val = new BoolValue(true); break;
-		case FALSE:			val = new BoolValue(false); break;
+		case TRUE:			val = Value(true); break;
+		case FALSE:			val = Value(false); break;
 
 		case STRING_LITERAL:
-		case IDENTIFIER:	val = new StrValue((std::string&)constant.GetLexeme()); break;
+		case IDENTIFIER: {
+			StrValue* o = new StrValue(constant.GetLexeme());
+			val = Value(o); break;
+		}
 	}
 
 	constants.push_back(val);
 	return (uint8_t)(constants.size() - 1); // index of constant
 }
 
-uint8_t Chunk::AddConstant(Value *v) {
+uint8_t Chunk::AddConstant(Value v) {
 
 	if (constants.size() >= 256) {
 		throw std::string("Constants overflow");
@@ -71,7 +74,7 @@ uint8_t Chunk::AddConstant(Value *v) {
 
 
 
-Value *Chunk::ReadConstant(uint8_t index) {
+Value Chunk::ReadConstant(uint8_t index) {
 	return constants[index];
 }
 
@@ -79,8 +82,11 @@ Value *Chunk::ReadConstant(uint8_t index) {
 void Chunk::ClearConstants() {
 	for (int i = 0; i < this->constants.size(); i++) {
 		try {
-			delete this->constants[i];
-			this->constants[i] = nullptr;
+			if (this->constants[i].GetType() == Value::OBJECT_T) {
+				ObjectValue* o = constants[i].GetObject();
+				delete o;
+				constants[i].SetValue((ObjectValue*)nullptr);
+			}
 		}
 		catch (const std::exception& e) {
 			continue;
@@ -91,9 +97,13 @@ void Chunk::ClearConstants() {
 short Chunk::FindRunnable(Token& identifier) {
 	std::string name = identifier.GetLexeme();
 	for (int i = 0; i < this->constants.size(); i++) {
-		if (constants[i]->GetType() == Value::RUNNABLE_T) {
-			RunnableValue* r = (RunnableValue *)constants[i];
-			if (r->GetName() == name) return i;
+		if (constants[i].GetType() == Value::OBJECT_T) {
+			ObjectValue* o = constants[i].GetObject();
+
+			if (o->GetType() == ObjectValue::RUNNABLE_T) {
+				RunnableValue* r = (RunnableValue *)o;
+				if (r->GetName() == name) return i;
+			}
 		}
 	}
 

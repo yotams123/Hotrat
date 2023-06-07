@@ -1,25 +1,74 @@
 #include "Interpreter.h"
 
-bool IsIntegerValue(Value *f) {
-	if (f->GetType() != Value::NUM_T) return false;
-	float n = ((NumValue*)f)->GetValue();
+Value NewValue(float f) {
+	return Value(f);
+}
+
+
+Value NewValue(bool b) {
+	return Value(b);
+}
+
+Value NewValue(std::string& s) {
+	StrValue* res = new StrValue(s);
+	Value v = NewValue(res);
+	return v;
+}
+
+Value Interpreter::NewObject(ObjectValue* o) {
+
+	Value v = Value(o);
+	ObjectValue* obj = v.GetObject();
+
+	obj->SetNext(this->objects);
+	this->objects = obj;
+	return v;
+}
+
+
+Value NewValue() {
+	return Value();
+}
+
+
+float GetNumValue(Value& v) {
+	return v.GetNum();
+}
+
+bool GetBoolValue(Value& v) {
+	return v.GetBool();
+}
+
+ObjectValue* GetObjectValue(Value& v) {
+	return v.GetObject();
+}
+
+bool ValueIsNone(Value& v) {
+	return v.GetType() == Value::NONE_T;
+}
+
+bool IsIntegerValue(Value& f) {
+	if (f.GetType() != Value::NUM_T) return false;
+	float n = GetNumValue(f);
 	if (n == (int)n) return true;
 	return false;
 }
+
+
 
 Interpreter::Interpreter(RunnableValue* body) {
 	this->body = body;
 	this->objects = nullptr;
 	stack.count = 0;
 
-	globals = std::unordered_map<std::string, Value*>();
+	globals = std::unordered_map<std::string, Value>();
 }
 
 Interpreter::~Interpreter() {
 	if (objects == nullptr) return;
-	Value* v = objects;
+	ObjectValue* v = objects;
 	while (v != nullptr) {
-		Value* next = v->next;
+		ObjectValue* next = v->GetNext();
 		delete v;
 		v = next;
 	}
@@ -44,39 +93,39 @@ void Interpreter::RunCommand() {
 #endif // DEBUG_TRACE_STACK
 
 #define BINARY_NUM_OP(op)  {\
-	Value *b = pop(); \
-	Value *a = pop(); \
-	if (b->GetType() == Value::NUM_T && a->GetType() == Value::NUM_T){\
+	Value b = pop(); \
+	Value a = pop(); \
+	if (b.GetType() == Value::NUM_T && a.GetType() == Value::NUM_T){\
 		\
 		float n1 = GetNumValue(a); \
 		float n2 = GetNumValue(b); \
-		push(NewObject(n1 op n2));\
+		push(NewValue(n1 op n2));\
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
 	}\
 }
 
 #define BINARY_COMP_OP(op) {\
-	Value *b = pop(); \
-	Value *a = pop(); \
-	if (b->GetType() == Value::NUM_T && a->GetType() == Value::NUM_T){\
+	Value b = pop(); \
+	Value a = pop(); \
+	if (b.GetType() == Value::NUM_T && a.GetType() == Value::NUM_T){\
 		\
 		float n1 = GetNumValue(a); \
 		float n2 = GetNumValue(b); \
-		push(NewObject((bool)(n1 op n2)));\
+		push(NewValue((bool)(n1 op n2)));\
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
 	}\
 }
 
 #define BINARY_BIT_OP(op) {\
-	Value *b = pop(); \
-	Value *a = pop(); \
+	Value b = pop(); \
+	Value a = pop(); \
 	if (IsIntegerValue(b) && IsIntegerValue(a)){\
 		\
 		int n1 = GetNumValue(a); \
 		int n2 = GetNumValue(b); \
-		push(NewObject((float)(n1 op n2))); \
+		push(NewValue((float)(n1 op n2))); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-integer");\
 	}\
@@ -84,11 +133,10 @@ void Interpreter::RunCommand() {
 
 #define BINARY_ASSIGN_OP(a, op, IsPlus) {\
 \
-	Value *b = pop(); \
-	if (a->GetType() == Value::NUM_T && b->GetType() == Value::NUM_T){\
-		NumValue *na = (NumValue *)a;\
-		na->SetValue(GetNumValue(a) op GetNumValue(b));\
-		push(na); \
+	Value b = pop(); \
+	if (a->GetType() == Value::NUM_T && b.GetType() == Value::NUM_T){\
+		a->SetValue(GetNumValue(*a) op GetNumValue(b));\
+		push(*a); \
 	} else {\
 		std::string msg = "Can only perform this operation on two numbers"; \
 		if (IsPlus) msg += " or two strings";\
@@ -99,14 +147,11 @@ void Interpreter::RunCommand() {
 
 #define BINARY_BIT_ASSIGN_OP(a, op) {\
 \
-	Value *b = pop(); \
+	Value b = pop(); \
 	\
-	if (IsIntegerValue(a) && IsIntegerValue(b) ){\
-		NumValue *num1 = (NumValue *)a; \
-		NumValue *num2 = (NumValue *)b; \
-		\
-		num1->SetValue((int)GetNumValue(a) op (int)GetNumValue(b)); \
-		push(num1); \
+	if (IsIntegerValue(*a) && IsIntegerValue(b) ){\
+		a->SetValue((float)((int)GetNumValue(*a) op (int)GetNumValue(b))); \
+		push(*a); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform bitwise operations on non-integer types");\
 	}\
@@ -123,25 +168,25 @@ void Interpreter::RunCommand() {
 		case OP_POP:		pop();	break;
 
 		case OP_NONE: {
-			push(NewObject(nullptr));
+			push(Value());
 			break;
 		}
 
 		case OP_TRUE: {
-			push(NewObject(true));
+			push(NewValue(true));
 			break;
 		}
 		case OP_FALSE: {
-			push(NewObject(false));
+			push(NewValue(false));
 			break;
 		}
 
 		case OP_NEGATE: {
-			Value *a = pop();
+			Value a = pop();
 
-			if (a->GetType() == Value::NUM_T) {
+			if (a.GetType() == Value::NUM_T) {
 				float n = GetNumValue(a);
-				push(new NumValue(-n));
+				push(NewValue(-n));
 			}
 			else {
 				error(TYPE_ERROR, "Negating a non-number type");
@@ -151,18 +196,18 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_NOT: {
-			Value *a = pop();
-			Value::datatype t = a->GetType();
+			Value a = pop();
+			Value::datatype t = a.GetType();
 			switch (t) {
 				case Value::NUM_T: {
 					float n = GetNumValue(a);
-					if (n / 1 == n)	push(new NumValue(~(int)n));
+					if (n / 1 == n)	push(NewValue((float)~(int)n));
 					else error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer");
 					break;
 				}
 				case Value::BOOL_T: {
 					bool b = GetBoolValue(a);
-					push(NewObject(!b));
+					push(NewValue(!b));
 					break;
 				}
 			}
@@ -170,14 +215,18 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_ADD: {
-			switch (peek(0)->GetType()) {
+			switch (peek(0).GetType()) {
 				case Value::NUM_T:	BINARY_NUM_OP(+);	break;
-				case Value::STRING_T: {
-					if (peek(1)->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
-					StrValue* b = (StrValue *)pop();
-					StrValue* a = (StrValue *)pop();
+				case Value::OBJECT_T: {
 
-					push(NewObject((std::string&)(*a + *b)));
+					std::string msg = "Can only perform this operation on two numbers or two strings";
+
+					Value v2 = pop();
+					Value v1 = pop();
+					StrValue* a = ExtractStrValue(&v1, msg);
+					StrValue* b = ExtractStrValue(&v2, msg);
+
+					push(NewValue((std::string&)(*a + *b)));
 					break;
 				}
 				default:
@@ -205,7 +254,7 @@ void Interpreter::RunCommand() {
 			uint8_t IdIndex = CurrentChunk()->advance();
 			std::string identifier = GetConstantStr(IdIndex);
 
-			Value* v = pop();
+			Value v = pop();
 			AddGlobal(identifier, v);
 			break;
 		}
@@ -214,9 +263,9 @@ void Interpreter::RunCommand() {
 			uint8_t IdIndex = CurrentChunk()->advance();
 			std::string identifier = GetConstantStr(IdIndex);
 
-			Value* v = peek(0); // want to keep value on the stack in case the assignment is part of an expression
+			Value v = peek(0); // want to keep value on the stack in case the assignment is part of an expression
 
-			if (globals[identifier] == nullptr) error(UNDEFINED_RAT, "Setting value to an undefined rat");
+			if (!IsDefinedGlobal(identifier)) error(UNDEFINED_RAT, "Setting value to an undefined rat");
 
 			globals[identifier] = v;
 			break;
@@ -225,7 +274,7 @@ void Interpreter::RunCommand() {
 		case OP_GET_GLOBAL: {
 			Value* var = FindGlobal();
 
-			push(var);
+			push(*var);
 			break;
 		}
 
@@ -233,7 +282,7 @@ void Interpreter::RunCommand() {
 			
 			Value* var = FindLocal();
 
-			push(var);
+			push(*var);
 			break;
 		}
 
@@ -250,10 +299,10 @@ void Interpreter::RunCommand() {
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't increment a non-number value");
 			}
-			NumValue* num = (NumValue*)var;
-			num->SetValue(GetNumValue(num) + 1);
+
+			var->SetValue(GetNumValue(*var) + 1);
 			
-			push(num);
+			push(*var);
 			break;
 		}
 
@@ -263,10 +312,9 @@ void Interpreter::RunCommand() {
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't increment a non-number value");
 			}
-			NumValue* num = (NumValue*)var;
-			num->SetValue(GetNumValue(num) + 1);
+			var->SetValue(GetNumValue(*var) + 1);
 
-			push(num);
+			push(*var);
 			break;
 		}
 
@@ -278,9 +326,9 @@ void Interpreter::RunCommand() {
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't decrement a non-number value");
 			}
-			NumValue* num = (NumValue*)var;
-			num->SetValue(GetNumValue(num) - 1);
-			push(num);
+
+			var->SetValue(GetNumValue(*var) - 1);
+			push(*var);
 
 			break;
 		}
@@ -291,24 +339,29 @@ void Interpreter::RunCommand() {
 			if (var->GetType() != Value::NUM_T) {
 				error(TYPE_ERROR, "Can't decrement a non-number value");
 			}
-			NumValue* num = (NumValue*)var;
-			num->SetValue(GetNumValue(num) - 1);
-			push(num);
+
+			var->SetValue(GetNumValue(*var) - 1);
+			push(var);
 
 			break;
 		}
 
 		case OP_ADD_ASSIGN_GLOBAL: {
-			switch (peek(0)->GetType()) {
-				case Value::STRING_T: {
-					StrValue* b = (StrValue*)pop();
+			switch (peek(0).GetType()) {
+				case Value::OBJECT_T: {
+					ObjectValue* o = peek(0).GetObject();
 
-					Value* va = FindGlobal();
-					if (va->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
+					if (o->IsString()) {
+						std::string ErrorMsg = "Can only perform this operation on two strings or two numbers";
 
-					StrValue* a = (StrValue*)va;
-					a->SetValue((std::string&)(*a + *b));
-					push(a);
+						Value v = pop();
+						StrValue* b = ExtractStrValue(&v, ErrorMsg);
+						StrValue* a = ExtractStrValue(FindGlobal(), ErrorMsg);
+
+						a->SetValue((std::string&)(*a + *b));
+						push(a);
+					}
+					
 					break;
 				}
 
@@ -322,24 +375,28 @@ void Interpreter::RunCommand() {
 		}
 		
 		case OP_ADD_ASSIGN_LOCAL: {
-			switch (peek(0)->GetType()) {
-			case Value::STRING_T: {
-				StrValue* b = (StrValue*)pop();
+			switch (peek(0).GetType()) {
+				case Value::OBJECT_T: {
 
-				Value* va = FindLocal();
-				if (va->GetType() != Value::STRING_T) error(TYPE_ERROR, "Can only concatenate two strings");
+					std::string msg = "Can only perform this operation on two numbers or two strings";
+					Value v = pop();
+					StrValue* b = ExtractStrValue(&v, msg);
 
-				StrValue* a = (StrValue*)va;
-				a->SetValue((std::string&)(*a + *b));
-				push(a);
-				break;
-			}
+					Value* va = FindLocal();
+					StrValue* a = ExtractStrValue(va, msg);
 
-			default: {
-				Value* a = FindLocal();
-				BINARY_ASSIGN_OP(a, +, false);
-				break;
-			}
+					a->SetValue((std::string&)(*a + *b));
+					
+					va->SetValue(a);
+					push(*va);
+					break;
+				}
+
+				default: {
+					Value* a = FindLocal();
+					BINARY_ASSIGN_OP(a, +, false);
+					break;
+				}
 			}
 			break;
 		}
@@ -455,7 +512,7 @@ void Interpreter::RunCommand() {
 			uint8_t JumpHighByte = this->CurrentChunk()->advance();
 			uint8_t JumpLowByte = this->CurrentChunk()->advance();
 
-			if (peek(0)->IsTruthy()) {
+			if (peek(0).IsTruthy()) {
 				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
 				this->CurrentChunk()->MoveIp(distance);
 			}
@@ -465,7 +522,7 @@ void Interpreter::RunCommand() {
 			uint8_t JumpHighByte = this->CurrentChunk()->advance();
 			uint8_t JumpLowByte = this->CurrentChunk()->advance();
 
-			if (!(peek(0)->IsTruthy())) {
+			if (!(peek(0).IsTruthy())) {
 				short distance = (short)(JumpHighByte << 8) + (short)(JumpLowByte);
 				this->CurrentChunk()->MoveIp(distance);
 			}
@@ -489,26 +546,28 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_REPEAT: {
-			Value* v = peek(0);
+			Value v = peek(0);
 			if (!IsIntegerValue(v)) error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
-			int n = ((NumValue*)v)->GetValue();
+			
+			int n = GetNumValue(v);
 
 			if (n <= 0)  error(TYPE_ERROR, "Can only use positive integer values as the operand to 'repeat'");
 			break;
 		}
 
 		case OP_END_REPEAT: {
-			Value *v = peek(0);
+			Value v = pop();
 			if (!IsIntegerValue(v)) error(INTERNAL_ERROR, "");
 
-			NumValue* nv = (NumValue*)v;
-			v->SetValue(GetNumValue(v) - 1);
+			v.SetValue(v.GetNum() - 1);
 
 			int n = GetNumValue(v);
 
 			if (n == 0) {
-				pop();
 				CurrentChunk()->MoveIp(4);  // skip over 'op_loop' instruction
+			}
+			else {
+				push(v);
 			}
 
 			break;
@@ -516,11 +575,15 @@ void Interpreter::RunCommand() {
 
 		case OP_DEFINE_RUNNABLE: {
 			uint8_t index = CurrentChunk()->advance();
-			Value *v = CurrentChunk()->ReadConstant(index);
-			if (v->GetType() != Value::RUNNABLE_T) error(INTERNAL_ERROR, "");
+			Value v = CurrentChunk()->ReadConstant(index);
+			if (!v.IsObject()) error(INTERNAL_ERROR, "");
 			
-			RunnableValue* runnable = (RunnableValue *)v;
-			AddGlobal(runnable->GetName(), runnable);
+			ObjectValue* o = v.GetObject();
+			if (!o->IsRunnable()) error(INTERNAL_ERROR, "");
+
+			RunnableValue* runnable = (RunnableValue *)o;
+
+			AddGlobal(runnable->GetName(), NewObject(runnable));
 			break;
 		}
 
@@ -530,15 +593,23 @@ void Interpreter::RunCommand() {
 
 			switch (called->GetType())
 			{
-				case Value::RUNNABLE_T: {
-					RunnableValue *runnable = ((RunnableValue*)called);
-					uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
-
-					Chunk* c = new Chunk(runnable->GetChunk());
-					RunnableValue* NewBody = new RunnableValue(runnable, c, this->body, FrameIndex);
+				case Value::OBJECT_T: {
+					ObjectValue* o = called->GetObject();
 					
-					SetBody(NewBody);
+					switch (o->GetType()) {
+						case ObjectValue::RUNNABLE_T: {
+							RunnableValue* runnable = ((RunnableValue*)o);
+							uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
+
+							Chunk* c = new Chunk(runnable->GetChunk());
+							RunnableValue* NewBody = new RunnableValue(runnable, c, this->body, FrameIndex);
+
+							SetBody(NewBody);
+							break;
+						}
+					}
 					break;
+					
 				}
 
 				default:
@@ -549,7 +620,7 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_RETURN: {
-			Value* ReturnVal = pop();
+			Value ReturnVal = pop();
 
 			this->stack.count = this->body->GetFrameStart();  // pop frame off the stack
 
@@ -582,110 +653,87 @@ void Interpreter::SetBody(RunnableValue* body) {
 }
 
 
-Value *Interpreter::pop() {
+Value Interpreter::pop() {
 	if (this->stack.count <= 0) {
 		error(STACK_UNDERFLOW, "Popping from empty stack");
 	}
 
 	stack.count--;
-	Value *i = stack.stk[stack.count];
+	Value i = stack.stk[stack.count];
 
 	return i;
 }
 
-void Interpreter::push(Value *value) {
+void Interpreter::push(Value value) {
 	if (stack.count == StackSize) error(STACK_OVERFLOW, "Stack limit exceeded");
 	stack.stk[stack.count++] = value;
 	return;
 }
 
-Value *Interpreter::peek(int depth) {
+Value& Interpreter::peek(int depth) {
 	if (depth > stack.count - 1) error(STACK_UNDERFLOW, "Can't peek so deep into stack");
 	return this->stack.stk[stack.count - 1 - depth];
 }
 
-float Interpreter::GetNumValue(Value* v) {
-	return ((NumValue*)v)->GetValue();
-}
 
-bool Interpreter::GetBoolValue(Value* v) {
-	return ((BoolValue*)v)->GetValue();
-}
 
-std::string Interpreter::GetStrValue(Value* v) {
-	return ((StrValue*)v)->GetValue();
-}
 
-NumValue *Interpreter::NewObject(float f) {
-	NumValue* res = new NumValue(f);
-	res->next = this->objects;
-	this->objects = res;
-	return res;
+
+StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
+	if (v->GetType() != Value::OBJECT_T) error(TYPE_ERROR, ErrorMsg);
+
+	ObjectValue* o = v->GetObject();
+
+	if (o->GetType() != ObjectValue::STRING_T) error(TYPE_ERROR, ErrorMsg);
+	return (StrValue*)o;
 }
 
 
-BoolValue* Interpreter::NewObject(bool b) {
-	BoolValue* res = new BoolValue(b);
-	res->next = this->objects;
-	this->objects = res;
-	return res;
-}
-
-StrValue* Interpreter::NewObject(std::string& s) {
-	StrValue* res = new StrValue(s);
-	res->next = this->objects;
-	this->objects = res;
-	return res;
-}
-
-Value* Interpreter::NewObject(nullptr_t p) {
-	Value* res = new Value(); // 'None' type
-	res->next = this->objects;
-	this->objects = res;
-	return res;
-}
 
 std::string Interpreter::GetConstantStr(uint8_t index) {
-	Value* v = CurrentChunk()->ReadConstant(index);
-	return ((StrValue*)v)->GetValue();
+	Value v = CurrentChunk()->ReadConstant(index);
+	StrValue* s = (StrValue *)v.GetObject();
+	return s->GetValue();
 }
 
 bool Interpreter::GetConstantBool(uint8_t index) {
-	Value* v = CurrentChunk()->ReadConstant(index);
-	return ((BoolValue*)v)->GetValue();
+	Value v = CurrentChunk()->ReadConstant(index);
+	return v.GetBool();
 }
 
 float Interpreter::GetConstantNum(uint8_t index) {
-	Value* v = CurrentChunk()->ReadConstant(index);
-	return ((NumValue*)v)->GetValue();
+	Value v = CurrentChunk()->ReadConstant(index);
+	return v.GetNum();
 }
 
 
-Value* Interpreter::FindLocal() {
+Value *Interpreter::FindLocal() {
 	uint8_t FrameSlot = CurrentChunk()->advance();
-	Value* var = this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1];
-
-	return var;
+	return &(this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1]);
 }
 
-Value* Interpreter::FindGlobal() {
+Value *Interpreter::FindGlobal() {
 	uint8_t IdIndex = CurrentChunk()->advance();
 	std::string identifier = GetConstantStr(IdIndex);
-	Value* var = this->globals[identifier];
 
-	if (var == nullptr) error(UNDEFINED_RAT, "Undefined rat " + identifier);
+	if (IsDefinedGlobal(identifier)) return &(this->globals[identifier]);
 
-	return var;
+	error(UNDEFINED_RAT, "Undefined rat '" + identifier + "' ");
 }
 
-void Interpreter::AddGlobal(std::string& name, Value* value) {
+void Interpreter::AddGlobal(std::string& name, Value value) {
 	this->globals.insert({ name, value });
 }
+
+bool Interpreter::IsDefinedGlobal(std::string& identifier ) {
+	return this->globals.find(identifier) != this->globals.end();
+}
+
 
 std::string Interpreter::TraceStack(int CodeOffset) {
 	std::string trace = "";
 	for (uint8_t i = 0; i < this->stack.count; i++) {
-		trace += ("[ " + this->stack.stk[i]->ToString() + "]\t");
+		trace += ("[ " + this->stack.stk[i].ToString() + " ]\t");
 	}
 	trace += '\n';
 	return (std::to_string(CodeOffset) + "\t" + trace);

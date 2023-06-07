@@ -93,7 +93,7 @@ private:
 	std::vector<uint8_t> code;
 	short ip;
 
-	std::vector<Value *> constants;
+	std::vector<Value> constants;
 
 public:
 	Chunk();
@@ -101,7 +101,7 @@ public:
 	~Chunk();
 
 	uint8_t AddConstant(Token&);
-	uint8_t AddConstant(Value *v);	// to add runnables
+	uint8_t AddConstant(Value v);	// to add runnables
 	void ClearConstants();
 	short FindRunnable(Token& name);
 
@@ -109,10 +109,10 @@ public:
 	void Append(uint8_t, uint8_t);
 
 	uint8_t advance();
-	Value *ReadConstant(uint8_t index);
+	Value ReadConstant(uint8_t index);
 
 	std::vector<uint8_t>& GetCode();
-	std::vector<Value*>& GetConstants();
+	std::vector<Value>& GetConstants();
 	bool IsAtEnd();
 
 	short GetOffset();

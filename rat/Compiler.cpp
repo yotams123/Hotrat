@@ -308,7 +308,7 @@ void Compiler::call(bool CanAssign) {
 		
 		if (RunnableIndex == -1) ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
 		
-		r = (RunnableValue*)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex));
+		r = (RunnableValue *)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex).GetObject());
 	}
 	else if (ct == COMPILE_RUNNABLE) {
 		Chunk* global = this->CurrentBody->GetEnclosing()->GetChunk();
@@ -317,7 +317,7 @@ void Compiler::call(bool CanAssign) {
 
 		if (RunnableIndex == -1) ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
 
-		r = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex));
+		r = r = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex).GetObject());
 	}
 	if (r == nullptr) error(INTERNAL_ERROR, "", name);
 
@@ -602,6 +602,8 @@ void Compiler::RunnableDeclaration() {
 	advance();
 
 	RunnableValue* rv = CurrentBody;
+	Value v = Value(rv);
+
 	CurrentBody = CurrentBody->GetEnclosing();
 	this->ct = COMPILE_SCRIPT;
 
@@ -655,7 +657,7 @@ uint8_t Compiler::SafeAddConstant(Token constant){
 	return index;
 }
 
-uint8_t Compiler::SafeAddConstant(Value *v) {
+uint8_t Compiler::SafeAddConstant(Value v) {
 	// objects that have to be defined as values before insertion
 	uint8_t index;
 	try {

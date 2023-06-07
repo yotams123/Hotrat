@@ -15,14 +15,14 @@ private:
 	static const short StackSize = 255;
 
 	typedef struct {
-		Value *stk[StackSize];
+		Value stk[StackSize];
 		uint8_t count;
 	} StackStruct;
 
 	StackStruct stack;
 
-	void push(Value *value);
-	Value *pop();
+	void push(Value value);
+	Value pop();
 
 	RunnableValue* body;
 	Chunk* CurrentChunk();
@@ -30,7 +30,7 @@ private:
 
 	void RunCommand();
 
-	Value* objects;
+	ObjectValue* objects;
 
 	static enum ExitCode {
 		INTERPRET_OK = 0,
@@ -44,16 +44,6 @@ private:
 		INTERNAL_ERROR,
 	};
 
-
-	BoolValue *NewObject(bool b);
-	NumValue *NewObject(float f);
-	StrValue* NewObject(std::string& s);
-	Value* NewObject(nullptr_t p);
-
-	bool GetBoolValue(Value *);
-	float GetNumValue(Value *);
-	std::string GetStrValue(Value*);
-
 	std::string GetConstantStr(uint8_t index);
 	float GetConstantNum(uint8_t index);
 	bool GetConstantBool(uint8_t index);
@@ -61,18 +51,20 @@ private:
 	std::string TraceStack(int CodeOffset);
 	void error(ExitCode e, std::string msg);
 
-	std::unordered_map<std::string, Value*> globals;
-	void AddGlobal(std::string&, Value*);
-	Value* FindGlobal();
+	std::unordered_map<std::string, Value> globals;
+	void AddGlobal(std::string&, Value);
+	bool IsDefinedGlobal(std::string& identifier);
+	
+	Value *FindGlobal();
+	Value *FindLocal();
 
-	Value* FindLocal();
-
+	Value NewObject(ObjectValue* obj);
+	StrValue* ExtractStrValue(Value* v, std::string&);
 public:
 	Interpreter(RunnableValue *);
 	~Interpreter();
 
 	int interpret();
-	Value* peek(int depth);
+	Value& peek(int depth);
 
 };
-

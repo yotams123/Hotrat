@@ -8,12 +8,16 @@ Debugger::Debugger(Chunk *chunk, std::string name){
 	ChunkName = name;
 	code = chunk->GetCode();
 
-	std::vector<Value*>& constants = chunk->GetConstants();
+	std::vector<Value>& constants = chunk->GetConstants();
 	for (int i = 0; i < constants.size(); i++) {
-		if (constants[i]->GetType() == Value::RUNNABLE_T) {
-			RunnableValue* r = (RunnableValue*)constants[i];
-			Debugger d = Debugger(r->GetChunk(), r->ToString());
-			d.DisassembleChunk();
+		if (constants[i].IsObject()) {
+			ObjectValue* o = constants[i].GetObject();
+
+			if (o->IsRunnable()) {
+				RunnableValue* r = (RunnableValue*)o;
+				Debugger d = Debugger(r->GetChunk(), r->ToString());
+				d.DisassembleChunk();
+			}
 		}
 	}
 

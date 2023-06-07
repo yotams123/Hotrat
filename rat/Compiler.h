@@ -131,7 +131,7 @@ private:
 
 
 	uint8_t SafeAddConstant(Token Constant);
-	uint8_t SafeAddConstant(Value *v);  // for objects that have to be defined as values before insertion
+	uint8_t SafeAddConstant(Value v);  // for objects that have to be defined as values before insertion
 
 	uint8_t AddLocal(Token identifier);
 	short ResolveLocal(Token identifier);
