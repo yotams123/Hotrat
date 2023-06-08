@@ -171,8 +171,20 @@ uint8_t Compiler::block() {
 			case TOKEN_EOF:
 				return UNCLOSED_BLOCK; break;
 
+			case RETURN: {
+				advance();
+				if (match(TOKEN_NEWLINE)) EmitBytes(OP_NONE, OP_RETURN);
+				else {
+					expression(true);
+					EmitByte(OP_RETURN);
+				}
+
+				break;
+			}
+
 			case RUNNABLE:	
 				ErrorAtCurrent(BLOCKED_RUNNABLE, "Can't define a runnable inside a block");
+
 			default:
 				declaration(true);
 		}
