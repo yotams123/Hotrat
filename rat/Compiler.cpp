@@ -662,8 +662,8 @@ uint8_t Compiler::SafeAddConstant(Token constant){
 		index = CurrentBody->GetChunk()->AddConstant(constant);
 	}
 	catch (std::string e) {
-		if (e == "Constants overflow")	ErrorAtCurrent(TABLE_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
-		if (e == "Float overflow")		ErrorAtCurrent(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
+		if (e == "Constants overflow")	ErrorAtPrevious(TABLE_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Float overflow")		ErrorAtPrevious(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
 	}
 
 	return index;
@@ -676,8 +676,8 @@ uint8_t Compiler::SafeAddConstant(Value v) {
 		index = CurrentBody->GetChunk()->AddConstant(v);
 	}
 	catch (std::string e) {
-		if (e == "Constants overflow")	ErrorAtCurrent(TABLE_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
-		if (e == "Float overflow")		ErrorAtCurrent(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
+		if (e == "Constants overflow")	ErrorAtPrevious(TABLE_OVERFLOW, "Constants overflow - too many constants in a script/runnable");
+		if (e == "Float overflow")		ErrorAtPrevious(FLOAT_OVERFLOW, "Value too large - can't be represented as a number value");
 	}
 
 	return index;
@@ -711,7 +711,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	}
 
 	bool CanAssign = (precedence <= PREC_ASSIGN);
-	(this->*PrefixRule)(CanAssign);
+	(this->*PrefixRule)(CanAssign);  // call prefix method
 
 
 	while (precedence <= GetRule(Current().GetType()).precedence) {
@@ -721,7 +721,7 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 		if (InfixRule == nullptr) {
 			ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
 		}
-		(this->*InfixRule)(CanAssign);
+		(this->*InfixRule)(CanAssign);  // call infix method
 	}
 	if (match(EQUALS)) { // token hasn't been consumed, meaning assignment target was invalid
 		ErrorAtCurrent(UNEXPECTED_TOKEN, "Invalid assignment target");

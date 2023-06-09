@@ -59,6 +59,8 @@ private:
 	Value *FindLocal();
 
 	Value NewObject(ObjectValue* obj);
+	Value NewObject(std::string& str);
+
 	StrValue* ExtractStrValue(Value* v, std::string&);
 public:
 	Interpreter(RunnableValue *);

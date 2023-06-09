@@ -9,9 +9,9 @@ Value NewValue(bool b) {
 	return Value(b);
 }
 
-Value NewValue(std::string& s) {
+Value Interpreter::NewObject(std::string& s) {
 	StrValue* res = new StrValue(s);
-	Value v = NewValue(res);
+	Value v = NewObject(res);
 	return v;
 }
 
@@ -226,7 +226,7 @@ void Interpreter::RunCommand() {
 					StrValue* a = ExtractStrValue(&v1, msg);
 					StrValue* b = ExtractStrValue(&v2, msg);
 
-					push(NewValue((std::string&)(*a + *b)));
+					push(NewObject((std::string&)(*a + *b)));
 					break;
 				}
 				default:

@@ -197,10 +197,10 @@ Token Scanner::ScanToken() {
 		case ':': return Token(COLON, ":");
 	}
 
-	if (isalpha(c) || c == '_') {
+	if (isalpha((uint8_t)c) || c == '_') {
 		return Identifier();
 	}
-	else if (isdigit(c)) {
+	else if (isdigit((uint8_t)c)) {
 		return Number();
 	}
 	else {
@@ -263,7 +263,7 @@ Token Scanner::String() {
 }
 
 Token Scanner::Identifier() {
-	while (isalnum(peek(0)) || peek(0) == '_') { advance(); }
+	while (isalnum((uint8_t)peek(0)) || peek(0) == '_') { advance(); }
 	return Token(IDENTIFIER, src.substr(start, current - start));
 }
 
