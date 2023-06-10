@@ -109,6 +109,7 @@ bool Value::IsTruthy() {
 			{
 				case ObjectValue::STRING_T:		return ((StrValue*)o)->GetValue() != "";		break;
 				case ObjectValue::RUNNABLE_T:	return true;
+				case ObjectValue::NATIVE_T:		return true;
 				default:
 					break;
 			}
@@ -140,6 +141,9 @@ bool ObjectValue::IsRunnable() {
 	return this->type == RUNNABLE_T;
 }
 
+bool ObjectValue::IsNative() {
+	return this->type == NATIVE_T;
+}
 
 std::string ObjectValue::ToString() {
 	return this->StrRep;
@@ -248,4 +252,23 @@ short RunnableValue::ResolveLocal(std::string Identifier) {
 	}
 
 	return -1;
+}
+
+
+NativeValue::NativeValue(std::string name, uint8_t arity, NativeRunnable runnable) {
+	this->type = NATIVE_T;
+	this->arity = arity;
+	this->runnable = runnable;
+
+	this->StrRep = "<Native runnable '" + name + "'>";
+}
+
+
+NativeRunnable NativeValue::GetRunnable() {
+	return this->runnable;
+}
+
+
+uint8_t NativeValue::GetArity() {
+	return this->arity;
 }

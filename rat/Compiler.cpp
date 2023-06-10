@@ -89,7 +89,7 @@ void Compiler::ErrorAtPrevious(int e, std::string msg) {
 }
 
 void Compiler::ErrorAtCurrent(int e, std::string msg) {
-	error(e, msg, Current());
+	error(e, msg, CurrentToken());
 }
 
 void Compiler::error(int e, std::string msg, Token where) {
@@ -122,13 +122,13 @@ int Compiler::CountLines() {
 }
 
 void Compiler::literal(bool CanAssign) {
-	TokenType type = Current().GetType();
+	TokenType type = CurrentToken().GetType();
 
 	switch (type)
 	{
 		case STRING_LITERAL:
 		case NUM_LITERAL: {
-			uint8_t index = SafeAddConstant(Current());
+			uint8_t index = SafeAddConstant(CurrentToken());
 
 			EmitBytes(OP_CONSTANT, index);
 			break;
@@ -149,7 +149,7 @@ void Compiler::literal(bool CanAssign) {
 uint8_t Compiler::block() {
 	while (true) {
 		while (match(TOKEN_NEWLINE)) literal(true);
-		Token tok = Current();
+		Token tok = CurrentToken();
 		switch (tok.GetType())
 		{
 			case ENDIF:
@@ -314,24 +314,42 @@ void Compiler::variable(bool CanAssign) {
 void Compiler::call(bool CanAssign) {
 	Token name = peek(-1);
 
-	RunnableValue* r = nullptr;
+	ObjectValue* o = nullptr;
+	bool native = false;
 	if (ct == COMPILE_SCRIPT) {
 		short RunnableIndex = CurrentChunk()->FindRunnable(name);
 		
-		if (RunnableIndex == -1) ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
-		
-		r = (RunnableValue *)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex).GetObject());
+		if (RunnableIndex == -1) {
+			if (CurrentChunk()->IsNative(name)) {
+				native = true;
+			}
+			else {
+				ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
+			}
+		}
+		else {
+			o = (RunnableValue*)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex).GetObject());
+		}
 	}
 	else if (ct == COMPILE_RUNNABLE) {
 		Chunk* global = this->CurrentBody->GetEnclosing()->GetChunk();
 
 		short RunnableIndex = global->FindRunnable(name);
 
-		if (RunnableIndex == -1) ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
-
-		r = r = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex).GetObject());
+		if (RunnableIndex == -1) {
+			if (CurrentChunk()->IsNative(name)) {
+				native = true;
+			}
+			else {
+				ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
+				// not native and not user-defined
+			}
+		}
+		else {
+			o = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex).GetObject());
+		}
 	}
-	if (r == nullptr) error(INTERNAL_ERROR, "", name);
+	if (o == nullptr && !native) error(INTERNAL_ERROR, "", name);
 
 	advance();	// advance over opening parenthesis
 
@@ -339,11 +357,18 @@ void Compiler::call(bool CanAssign) {
 
 	uint8_t index = SafeAddConstant(name);
 
-	
-	if (arity != r->GetArity()) error(UNDEFINED_RUNNABLE, "Rat '" + name.GetLexeme() + "' takes " + std::to_string(r->GetArity()) 
-		+ " arguments, but " + std::to_string(arity) + " were passed", name);
-
-	EmitBytes(OP_CALL, index);
+	if (native) {
+		EmitByte(OP_CALL_NATIVE);
+		EmitBytes(index, arity);
+	}
+	else if (o->IsRunnable()) {
+		if (arity != ((RunnableValue*)o)->GetArity()) {
+			error(UNDEFINED_RUNNABLE,
+				"Rat '" + name.GetLexeme() + "' takes " + std::to_string(((RunnableValue*)o)->GetArity())
+				+ " arguments, but " + std::to_string(arity) + " were passed", name);
+		}
+		EmitBytes(OP_CALL, index);
+	} 
 }
 
 
@@ -418,7 +443,7 @@ void Compiler::expression(bool CanAssign){
 }
 
 void Compiler::declaration(bool CanAssign) {
-	Token kw = Current();
+	Token kw = CurrentToken();
 	switch (kw.GetType()) {
 		case RAT: {
 			advance();
@@ -437,7 +462,7 @@ void Compiler::declaration(bool CanAssign) {
 }
 
 void Compiler::statement(bool CanAssign) {
-	Token kw = Current();
+	Token kw = CurrentToken();
 
 	switch (kw.GetType()) {
 		case IF: {
@@ -702,7 +727,7 @@ Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
-	ParseRule rule = GetRule(Current().GetType());
+	ParseRule rule = GetRule(CurrentToken().GetType());
 	ParseFunction PrefixRule = rule.prefix;
 
 	if (PrefixRule == nullptr) {
@@ -714,9 +739,9 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 	(this->*PrefixRule)(CanAssign);  // call prefix method
 
 
-	while (precedence <= GetRule(Current().GetType()).precedence) {
+	while (precedence <= GetRule(CurrentToken().GetType()).precedence) {
 
-		rule = GetRule(Current().GetType());
+		rule = GetRule(CurrentToken().GetType());
 		ParseFunction InfixRule = rule.infix;
 		if (InfixRule == nullptr) {
 			ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
@@ -734,7 +759,7 @@ Token Compiler::advance() {
 	return tokens[CurrentTokenOffset++];
 }
 
-Token Compiler::Current() {
+Token Compiler::CurrentToken() {
 	return tokens[CurrentTokenOffset];
 }
 
@@ -743,7 +768,7 @@ Token Compiler::peek(int distance) {
 }
 
 bool Compiler::match(TokenType type) {
-	return Current().GetType() == type;
+	return CurrentToken().GetType() == type;
 }
 
 void Compiler::consume(TokenType type, std::string ErrorMsg) {

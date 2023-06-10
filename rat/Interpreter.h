@@ -7,7 +7,7 @@
 #include "Chunk.h"
 #include "Value.h"
 
-#define DEBUG_TRACE_STACK
+//#define DEBUG_TRACE_STACK
 
 class Interpreter
 {
@@ -62,6 +62,10 @@ private:
 	Value NewObject(std::string& str);
 
 	StrValue* ExtractStrValue(Value* v, std::string&);
+
+	void DefineNative(std::string name, uint8_t arity, NativeRunnable run);
+	void NativeInput();
+	void NativePrint();
 public:
 	Interpreter(RunnableValue *);
 	~Interpreter();

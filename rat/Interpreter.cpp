@@ -56,12 +56,37 @@ bool IsIntegerValue(Value& f) {
 
 
 
+
+void Interpreter::NativeInput() {
+	std::string str;
+	std::getline(std::cin, str);
+
+	push(NewObject(str));
+}
+
+void Interpreter::NativePrint() {
+	Value v = pop();
+	std::cout << v.ToString();
+	push(NewValue());
+}
+
+
+
+
+void Interpreter::DefineNative(std::string name, uint8_t arity, NativeRunnable run) {
+	AddGlobal(name, NewObject(new NativeValue(name, arity, run)));
+}
+
+
 Interpreter::Interpreter(RunnableValue* body) {
 	this->body = body;
 	this->objects = nullptr;
 	stack.count = 0;
 
 	globals = std::unordered_map<std::string, Value>();
+
+	DefineNative("input", 0, &Interpreter::NativeInput);
+	DefineNative("print", 1, &Interpreter::NativePrint);
 }
 
 Interpreter::~Interpreter() {
@@ -591,31 +616,37 @@ void Interpreter::RunCommand() {
 		case OP_CALL: {
 			Value* called = FindGlobal();
 
-			switch (called->GetType())
-			{
-				case Value::OBJECT_T: {
-					ObjectValue* o = called->GetObject();
-					
-					switch (o->GetType()) {
-						case ObjectValue::RUNNABLE_T: {
-							RunnableValue* runnable = ((RunnableValue*)o);
-							uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
+			if (called->IsObject() && ((ObjectValue *)called)->IsRunnable() ){
+				RunnableValue* runnable = ((RunnableValue*)called->GetObject());
+				uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
 
-							Chunk* c = new Chunk(runnable->GetChunk());
-							RunnableValue* NewBody = new RunnableValue(runnable, c, this->body, FrameIndex);
+				Chunk* c = new Chunk(runnable->GetChunk());
+				RunnableValue* NewBody = new RunnableValue(runnable, c, this->body, FrameIndex);
 
-							SetBody(NewBody);
-							break;
-						}
-					}
-					break;
-					
+				SetBody(NewBody);
+			}
+			else {
+				error(TYPE_ERROR, "Can't call an object that isn't a runnable");
+			}
+			break;
+		}
+
+		case OP_CALL_NATIVE: {
+			Value* called = FindGlobal();
+			uint8_t arity = CurrentChunk()->advance();
+
+			if (called->IsObject() && called->GetObject()->IsNative()) {
+				NativeValue* nv = (NativeValue *)called->GetObject();
+				if (arity != nv->GetArity()) {
+					error(TYPE_ERROR, "Native called with " +
+						std::to_string(arity) + " arguments, but accepts " + std::to_string(nv->GetArity()));
 				}
-
-				default:
-					error(TYPE_ERROR, "Can't call an object that isn't a runnable"); break;
-				}
-
+				NativeRunnable n = nv->GetRunnable();
+				(this->*n)();
+			}
+			else {
+				error(TYPE_ERROR, "Can't call an object that isn't a runnable");
+			}
 			break;
 		}
 

@@ -4,8 +4,10 @@
 
 Chunk::Chunk() {
 	ip = 0;
-
 	constants = std::vector<Value>();
+
+	this->natives.insert({ "input", true });
+	this->natives.insert({ "print", true });
 }
 
 Chunk::Chunk(Chunk *ToCopy) {
@@ -110,6 +112,11 @@ short Chunk::FindRunnable(Token& identifier) {
 	return -1;
 }
 
+bool Chunk::IsNative(Token& name) {
+	return this->natives.find(name.GetLexeme()) != this->natives.end();
+}
+
+
 void Chunk::Append(uint8_t byte) {
 	code.push_back(byte);
 }
@@ -124,7 +131,9 @@ std::vector<uint8_t>& Chunk::GetCode() {
 }
 
 bool Chunk::IsAtEnd() {
-	return this->ip > (this->code.size() - 1);
+	short i = this->code.size() - 1;  // vector.size() returns an unsigned type 
+				//so it must be converted to a signed type to prevent integer overflow
+	return this->ip > i; 
 }
 
 int Chunk::CountLines() {

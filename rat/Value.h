@@ -59,6 +59,7 @@ public:
 	typedef enum {
 		STRING_T,
 		RUNNABLE_T,
+		NATIVE_T
 	} ObjectType;
 
 protected:
@@ -73,6 +74,7 @@ public:
 	
 	bool IsString();
 	bool IsRunnable();
+	bool IsNative();
 
 	void SetNext(ObjectValue* obj);
 	ObjectValue *GetNext();
@@ -116,4 +118,21 @@ public:
 
 	uint8_t AddLocal(std::string Identifier);
 	short ResolveLocal(std::string Identifier);
+};
+
+
+class Interpreter;
+typedef void (Interpreter::*NativeRunnable)();
+
+class NativeValue : public ObjectValue {
+private:
+	std::string name;
+	uint8_t arity;
+	NativeRunnable runnable;
+
+public:
+	NativeValue(std::string name, uint8_t arity, NativeRunnable value);
+
+	NativeRunnable GetRunnable();
+	uint8_t GetArity();
 };

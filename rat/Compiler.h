@@ -117,7 +117,7 @@ private:
 	Token advance();
 	bool match(TokenType type);
 	void consume(TokenType type, std::string ErrorMsg);
-	Token Current();
+	Token CurrentToken();
 	Token peek(int distance);
 
 	// bytecode

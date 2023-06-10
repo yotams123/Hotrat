@@ -51,6 +51,16 @@ void Debugger::JumpOperation(const std::string& name) {
 	offset += 3;
 }
 
+
+void Debugger::CallOperation(const std::string& name) {
+	uint8_t index = code[offset + 1];
+	uint8_t arity = code[offset + 2];
+
+	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left <<
+		std::to_string(index) << " arity = " << std::to_string(arity) << "\n";
+
+	offset += 3;
+}
 void Debugger::DisassembleChunk() {
 	line = 1;
 	PrintLineNum = "1";
@@ -150,6 +160,8 @@ void Debugger::DisassembleInstruction() {
 		case OP_DEFINE_RUNNABLE:	ConstantOperation("OP_DEFINE_RUNNABLE");	break;
 		case OP_CALL:				ConstantOperation("OP_CALL");				break;
 		case OP_RETURN:				SimpleOperation("OP_RETURN");				break;
+
+		case OP_CALL_NATIVE:		CallOperation("OP_CALL_NATIVE");				break;
 
 		default: {
 			std::cout << "Unrecognized instruction" << instruction << "\t\n";

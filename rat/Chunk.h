@@ -70,8 +70,6 @@ typedef enum {
 	OP_SHIFTL_ASSIGN_LOCAL,
 	OP_SHIFTR_ASSIGN_LOCAL,
 
-
-
 	OP_JUMP,
 	OP_JUMP_IF_TRUE,
 	OP_JUMP_IF_FALSE,
@@ -82,6 +80,7 @@ typedef enum {
 
 	OP_DEFINE_RUNNABLE,
 	OP_CALL,
+	OP_CALL_NATIVE,
 	OP_RETURN,
 
 	OP_NEGATE,
@@ -94,16 +93,20 @@ private:
 	short ip;
 
 	std::vector<Value> constants;
+	std::unordered_map<std::string, bool> natives; // names of native runnables
 
 public:
 	Chunk();
 	Chunk(Chunk *);
 	~Chunk();
 
+	
 	uint8_t AddConstant(Token&);
 	uint8_t AddConstant(Value v);	// to add runnables
 	void ClearConstants();
 	short FindRunnable(Token& name);
+	
+	bool IsNative(Token &name);
 
 	void Append(uint8_t);
 	void Append(uint8_t, uint8_t);
