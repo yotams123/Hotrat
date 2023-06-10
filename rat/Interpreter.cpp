@@ -69,10 +69,11 @@ void Interpreter::NativeInput() {
 void Interpreter::NativePrint() {
 	Value v = pop();
 	std::cout << v.ToString() + "\n";
-	push(NewValue());
+	push(NewValue());  // none
 }
 
 void Interpreter::NativeReadFromFile() {
+	// reads entire file and returns a strvalue
 
 	Value v = pop();
 	if (!v.IsObject() || !(v.GetObjectValue())->IsString()) {
@@ -83,7 +84,7 @@ void Interpreter::NativeReadFromFile() {
 	LPCSTR filename = FileName.c_str();
 
 	HANDLE handle = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (handle == INVALID_HANDLE_VALUE) error(INTERNAL_ERROR, "Error opening the file");
+	if (handle == INVALID_HANDLE_VALUE) error(INTERNAL_ERROR, "Error opening the file\t\tare you sure the path is correct?");
 	
 	DWORD NumToReadH;
 	DWORD NumToReadL = GetFileSize(handle, &NumToReadH);
@@ -105,6 +106,8 @@ void Interpreter::NativeReadFromFile() {
 }
 
 void Interpreter::NativeWriteToFile() {
+	// appends new text to end of file
+
 	Value BuffValue = pop();
 	if (!BuffValue.IsObject() || !BuffValue.GetObjectValue()->IsString()) error(TYPE_ERROR,
 		"Second argument to WriteToFile must be a string value");
@@ -121,7 +124,7 @@ void Interpreter::NativeWriteToFile() {
 
 	HANDLE handle = CreateFileA(CFileName, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE) {
-		error(INTERNAL_ERROR, "Couldn't open file");
+		error(INTERNAL_ERROR, "Couldn't open file\t\tare you sure the path is correct?");
 	}
 
 	SetFilePointer(handle, 0, NULL, FILE_END);
@@ -133,10 +136,22 @@ void Interpreter::NativeWriteToFile() {
 
 	CloseHandle(handle);
 
-	push(NewValue());
+	push(NewValue());  // none
 }
 
+void Interpreter::NativeEmptyFile() {
+	Value FileValue = pop();
+	std::string msg = "EmptyFile's argument must be a string value";
 
+	StrValue * filestr = ExtractStrValue(&FileValue, msg);
+	std::string filename = filestr->GetValue();
+
+	HANDLE handle = CreateFileA(filename.c_str(), GENERIC_WRITE, NULL, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (!handle) error(INTERNAL_ERROR, "Couldn't open file\t\tare you sure the path is correct?");
+
+	CloseHandle(handle);
+	push(NewValue()); // none
+}
 
 void Interpreter::DefineNative(std::string name, uint8_t arity, NativeRunnable run) {
 	AddGlobal(name, NewObject(new NativeValue(name, arity, run)));
@@ -154,6 +169,7 @@ Interpreter::Interpreter(RunnableValue* body) {
 	DefineNative("print", 1, &Interpreter::NativePrint);
 	DefineNative("ReadFromFile", 1, &Interpreter::NativeReadFromFile);
 	DefineNative("WriteToFile", 2, &Interpreter::NativeWriteToFile);
+	DefineNative("EmptyFile", 1, &Interpreter::NativeEmptyFile);
 }
 
 Interpreter::~Interpreter() {
@@ -346,6 +362,14 @@ void Interpreter::RunCommand() {
 			uint8_t IdIndex = CurrentChunk()->advance();
 			std::string identifier = GetConstantStr(IdIndex);
 
+			if (IsDefinedGlobal(identifier)) {
+				if (globals[identifier].IsObject() && (globals[identifier].GetObjectValue())->IsNative()) {
+					error(REDECLARED_RAT, "identifier '" + identifier + "' is reserved for a native function, " +
+						"and cannot be a variable or runnable's name");
+				}
+				error(REDECLARED_RAT, "rat with the name '" + identifier + "' already exists");
+			}
+
 			Value v = pop();
 			AddGlobal(identifier, v);
 			break;
@@ -359,6 +383,12 @@ void Interpreter::RunCommand() {
 
 			if (!IsDefinedGlobal(identifier)) error(UNDEFINED_RAT, "Setting value to an undefined rat");
 
+			if (globals[identifier].IsObject()) {
+				ObjectValue* o = globals[identifier].GetObjectValue();
+
+				if (o->GetType() == ObjectValue::RUNNABLE_T) error(TYPE_ERROR, "Can't reassign a runnable");
+				else if (o->GetType() == ObjectValue::NATIVE_T) error(TYPE_ERROR, "Can't set a value to a native runnable");
+			}
 			globals[identifier] = v;
 			break;
 		}
@@ -714,6 +744,10 @@ void Interpreter::RunCommand() {
 			else {
 				error(TYPE_ERROR, "Can't call an object that isn't a runnable");
 			}
+
+			Value ReturnValue = pop();
+			pop(); // remove runnable from stack
+			push(ReturnValue);
 			break;
 		}
 

@@ -10,6 +10,7 @@ Chunk::Chunk() {
 	this->natives.insert({ "print", true });
 	this->natives.insert({ "ReadFromFile",	true });
 	this->natives.insert({ "WriteToFile",	true });
+	this->natives.insert({ "EmptyFile", true });
 }
 
 Chunk::Chunk(Chunk *ToCopy) {

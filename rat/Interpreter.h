@@ -7,8 +7,6 @@
 #include "Chunk.h"
 #include "Value.h"
 
-//#define DEBUG_TRACE_STACK
-
 class Interpreter
 {
 private:
@@ -38,6 +36,7 @@ private:
 		STACK_UNDERFLOW,
 		STACK_OVERFLOW,
 		TYPE_ERROR,
+		REDECLARED_RAT,
 		UNDEFINED_RAT,
 		RETURN_FROM_SCRIPT,  // 'return' statement outside a runnable
 
@@ -64,10 +63,13 @@ private:
 	StrValue* ExtractStrValue(Value* v, std::string&);
 
 	void DefineNative(std::string name, uint8_t arity, NativeRunnable run);
+
 	void NativeInput();
 	void NativePrint();
+	
 	void NativeReadFromFile();
 	void NativeWriteToFile();
+	void NativeEmptyFile();
 
 public:
 	Interpreter(RunnableValue *);
