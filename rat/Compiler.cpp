@@ -328,7 +328,7 @@ void Compiler::call(bool CanAssign) {
 			}
 		}
 		else {
-			o = (RunnableValue*)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex).GetObject());
+			o = (RunnableValue*)(CurrentChunk()->ReadConstant((uint8_t)RunnableIndex).GetObjectValue());
 		}
 	}
 	else if (ct == COMPILE_RUNNABLE) {
@@ -346,7 +346,7 @@ void Compiler::call(bool CanAssign) {
 			}
 		}
 		else {
-			o = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex).GetObject());
+			o = (RunnableValue*)(global->ReadConstant((uint8_t)RunnableIndex).GetObjectValue());
 		}
 	}
 	if (o == nullptr && !native) error(INTERNAL_ERROR, "", name);

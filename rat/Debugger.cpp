@@ -11,7 +11,7 @@ Debugger::Debugger(Chunk *chunk, std::string name){
 	std::vector<Value>& constants = chunk->GetConstants();
 	for (int i = 0; i < constants.size(); i++) {
 		if (constants[i].IsObject()) {
-			ObjectValue* o = constants[i].GetObject();
+			ObjectValue* o = constants[i].GetObjectValue();
 
 			if (o->IsRunnable()) {
 				RunnableValue* r = (RunnableValue*)o;

@@ -8,6 +8,8 @@ Chunk::Chunk() {
 
 	this->natives.insert({ "input", true });
 	this->natives.insert({ "print", true });
+	this->natives.insert({ "ReadFromFile",	true });
+	this->natives.insert({ "WriteToFile",	true });
 }
 
 Chunk::Chunk(Chunk *ToCopy) {
@@ -85,7 +87,7 @@ void Chunk::ClearConstants() {
 	for (int i = 0; i < this->constants.size(); i++) {
 		try {
 			if (this->constants[i].GetType() == Value::OBJECT_T) {
-				ObjectValue* o = constants[i].GetObject();
+				ObjectValue* o = constants[i].GetObjectValue();
 				delete o;
 				constants[i].SetValue((ObjectValue*)nullptr);
 			}
@@ -100,7 +102,7 @@ short Chunk::FindRunnable(Token& identifier) {
 	std::string name = identifier.GetLexeme();
 	for (int i = 0; i < this->constants.size(); i++) {
 		if (constants[i].GetType() == Value::OBJECT_T) {
-			ObjectValue* o = constants[i].GetObject();
+			ObjectValue* o = constants[i].GetObjectValue();
 
 			if (o->GetType() == ObjectValue::RUNNABLE_T) {
 				RunnableValue* r = (RunnableValue *)o;

@@ -41,7 +41,7 @@ public:
 
 	float GetNum();
 	bool GetBool();
-	ObjectValue* GetObject();
+	ObjectValue* GetObjectValue();
 	bool IsNone();
 
 	bool IsObject();

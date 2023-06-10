@@ -66,6 +66,9 @@ private:
 	void DefineNative(std::string name, uint8_t arity, NativeRunnable run);
 	void NativeInput();
 	void NativePrint();
+	void NativeReadFromFile();
+	void NativeWriteToFile();
+
 public:
 	Interpreter(RunnableValue *);
 	~Interpreter();

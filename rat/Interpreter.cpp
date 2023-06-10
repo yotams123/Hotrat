@@ -1,5 +1,7 @@
 #include "Interpreter.h"
 
+#include <Windows.h>
+
 Value NewValue(float f) {
 	return Value(f);
 }
@@ -18,7 +20,7 @@ Value Interpreter::NewObject(std::string& s) {
 Value Interpreter::NewObject(ObjectValue* o) {
 
 	Value v = Value(o);
-	ObjectValue* obj = v.GetObject();
+	ObjectValue* obj = v.GetObjectValue();
 
 	obj->SetNext(this->objects);
 	this->objects = obj;
@@ -40,7 +42,7 @@ bool GetBoolValue(Value& v) {
 }
 
 ObjectValue* GetObjectValue(Value& v) {
-	return v.GetObject();
+	return v.GetObjectValue();
 }
 
 bool ValueIsNone(Value& v) {
@@ -66,10 +68,73 @@ void Interpreter::NativeInput() {
 
 void Interpreter::NativePrint() {
 	Value v = pop();
-	std::cout << v.ToString();
+	std::cout << v.ToString() + "\n";
 	push(NewValue());
 }
 
+void Interpreter::NativeReadFromFile() {
+
+	Value v = pop();
+	if (!v.IsObject() || !(v.GetObjectValue())->IsString()) {
+		error(TYPE_ERROR, "First argument to ReadFile must be a string");
+	}
+
+	std::string FileName = v.GetObjectValue()->ToString();
+	LPCSTR filename = FileName.c_str();
+
+	HANDLE handle = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (handle == INVALID_HANDLE_VALUE) error(INTERNAL_ERROR, "Error opening the file");
+	
+	DWORD NumToReadH;
+	DWORD NumToReadL = GetFileSize(handle, &NumToReadH);
+	
+	const int toread = ((NumToReadH << 8) | (NumToReadL));
+	char* buff = new char[toread + 1];
+
+	bool success = ReadFile(handle, buff, toread, NULL, NULL);
+	if (success == FALSE) error(INTERNAL_ERROR, "Error reading the file");
+	buff[toread] = 0;
+
+	std::string strbuf = std::string(buff);
+
+	delete[] buff;
+	buff = nullptr;
+
+	CloseHandle(handle);
+	push(NewObject(strbuf));
+}
+
+void Interpreter::NativeWriteToFile() {
+	Value BuffValue = pop();
+	if (!BuffValue.IsObject() || !BuffValue.GetObjectValue()->IsString()) error(TYPE_ERROR,
+		"Second argument to WriteToFile must be a string value");
+
+	std::string buff = BuffValue.GetObjectValue()->ToString();
+
+	Value FileValue = pop();
+	if (!FileValue.IsObject() || !(FileValue.GetObjectValue()->IsString())) {
+		error(TYPE_ERROR, "Second argument to WriteToFile must be a string value");
+	}
+
+	std::string filename = FileValue.GetObjectValue()->ToString();
+	LPCSTR CFileName = filename.c_str();
+
+	HANDLE handle = CreateFileA(CFileName, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (handle == INVALID_HANDLE_VALUE) {
+		error(INTERNAL_ERROR, "Couldn't open file");
+	}
+
+	SetFilePointer(handle, 0, NULL, FILE_END);
+
+	bool success = WriteFile(handle, buff.c_str(), buff.size(), NULL, NULL);
+	if (!success) {
+		error(INTERNAL_ERROR, "Error writing to file");
+	}
+
+	CloseHandle(handle);
+
+	push(NewValue());
+}
 
 
 
@@ -87,6 +152,8 @@ Interpreter::Interpreter(RunnableValue* body) {
 
 	DefineNative("input", 0, &Interpreter::NativeInput);
 	DefineNative("print", 1, &Interpreter::NativePrint);
+	DefineNative("ReadFromFile", 1, &Interpreter::NativeReadFromFile);
+	DefineNative("WriteToFile", 2, &Interpreter::NativeWriteToFile);
 }
 
 Interpreter::~Interpreter() {
@@ -374,7 +441,7 @@ void Interpreter::RunCommand() {
 		case OP_ADD_ASSIGN_GLOBAL: {
 			switch (peek(0).GetType()) {
 				case Value::OBJECT_T: {
-					ObjectValue* o = peek(0).GetObject();
+					ObjectValue* o = peek(0).GetObjectValue();
 
 					if (o->IsString()) {
 						std::string ErrorMsg = "Can only perform this operation on two strings or two numbers";
@@ -603,7 +670,7 @@ void Interpreter::RunCommand() {
 			Value v = CurrentChunk()->ReadConstant(index);
 			if (!v.IsObject()) error(INTERNAL_ERROR, "");
 			
-			ObjectValue* o = v.GetObject();
+			ObjectValue* o = v.GetObjectValue();
 			if (!o->IsRunnable()) error(INTERNAL_ERROR, "");
 
 			RunnableValue* runnable = (RunnableValue *)o;
@@ -617,7 +684,7 @@ void Interpreter::RunCommand() {
 			Value* called = FindGlobal();
 
 			if (called->IsObject() && ((ObjectValue *)called)->IsRunnable() ){
-				RunnableValue* runnable = ((RunnableValue*)called->GetObject());
+				RunnableValue* runnable = ((RunnableValue*)called->GetObjectValue());
 				uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
 
 				Chunk* c = new Chunk(runnable->GetChunk());
@@ -635,8 +702,8 @@ void Interpreter::RunCommand() {
 			Value* called = FindGlobal();
 			uint8_t arity = CurrentChunk()->advance();
 
-			if (called->IsObject() && called->GetObject()->IsNative()) {
-				NativeValue* nv = (NativeValue *)called->GetObject();
+			if (called->IsObject() && called->GetObjectValue()->IsNative()) {
+				NativeValue* nv = (NativeValue *)called->GetObjectValue();
 				if (arity != nv->GetArity()) {
 					error(TYPE_ERROR, "Native called with " +
 						std::to_string(arity) + " arguments, but accepts " + std::to_string(nv->GetArity()));
@@ -713,7 +780,7 @@ Value& Interpreter::peek(int depth) {
 StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
 	if (v->GetType() != Value::OBJECT_T) error(TYPE_ERROR, ErrorMsg);
 
-	ObjectValue* o = v->GetObject();
+	ObjectValue* o = v->GetObjectValue();
 
 	if (o->GetType() != ObjectValue::STRING_T) error(TYPE_ERROR, ErrorMsg);
 	return (StrValue*)o;
@@ -723,7 +790,7 @@ StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
 
 std::string Interpreter::GetConstantStr(uint8_t index) {
 	Value v = CurrentChunk()->ReadConstant(index);
-	StrValue* s = (StrValue *)v.GetObject();
+	StrValue* s = (StrValue *)v.GetObjectValue();
 	return s->GetValue();
 }
 

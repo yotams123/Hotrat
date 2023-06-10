@@ -80,7 +80,7 @@ bool Value::GetBool() {
 	return this->val.b;
 }
 
-ObjectValue *Value::GetObject() {
+ObjectValue *Value::GetObjectValue() {
 	return this->val.o;
 }
 
