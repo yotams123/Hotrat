@@ -61,6 +61,19 @@ void Debugger::CallOperation(const std::string& name) {
 
 	offset += 3;
 }
+
+
+void Debugger::RunnableDefinition(const std::string& name) {
+	uint8_t index = code[offset + 1];
+	uint8_t lines = code[offset + 2];
+
+	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left <<
+		std::to_string(index) << " linecount = " << std::to_string(lines) << "\n";
+
+	this->line += lines - 1;
+	offset += 3;
+}
+
 void Debugger::DisassembleChunk() {
 	line = 1;
 	PrintLineNum = "1";
@@ -157,7 +170,7 @@ void Debugger::DisassembleInstruction() {
 		case OP_END_REPEAT:			SimpleOperation("OP_END_REPEAT");	break;
 
 
-		case OP_DEFINE_RUNNABLE:	ConstantOperation("OP_DEFINE_RUNNABLE");	break;
+		case OP_DEFINE_RUNNABLE:	RunnableDefinition("OP_DEFINE_RUNNABLE");	break;
 		case OP_CALL:				ConstantOperation("OP_CALL");				break;
 		case OP_RETURN:				SimpleOperation("OP_RETURN");				break;
 

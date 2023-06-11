@@ -492,8 +492,11 @@ void Compiler::ExpressionStatement() {
 	expression(true);  // 'expression' will always allow assignment, regardless of parameter
 	if (!match(TOKEN_EOF)) {
 		consume(TOKEN_NEWLINE, "expected '\\n' after expression");
+		EmitBytes(OP_POP, OP_NEWLINE);
 	}
-	EmitByte(OP_POP);
+	else {
+		EmitByte(OP_POP);
+	}
 }
 
 void Compiler::VarDeclaration() {
@@ -622,6 +625,7 @@ void Compiler::RunnableDeclaration() {
 	consume(LEFT_PAREN, "Expected '(' after function name");
 	std::vector<std::string> args = ParameterList();
 	consume(COLON, "Expected ':' after function declaration");
+	consume(TOKEN_NEWLINE, "Expected newline after function declaration");
 
 	CurrentBody = new RunnableValue(CurrentBody, new Chunk, args, identifier.GetLexeme());
 	this->ct = COMPILE_RUNNABLE;
@@ -635,7 +639,6 @@ void Compiler::RunnableDeclaration() {
 		default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected 'endrunnable'");
 	}
 
-
 	advance();
 
 	RunnableValue* rv = CurrentBody;
@@ -645,7 +648,10 @@ void Compiler::RunnableDeclaration() {
 	this->ct = COMPILE_SCRIPT;
 
 	uint8_t index = SafeAddConstant(rv);
+
+	uint8_t lines = rv->GetChunk()->CountLines(true);
 	EmitBytes(OP_DEFINE_RUNNABLE, index);
+	EmitByte(lines);  // number of lines in the runnable, to improve runtime error reporting
 }
 
 

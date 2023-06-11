@@ -21,6 +21,7 @@ private:
 	void SimpleOperation(const std::string& name);
 	void JumpOperation(const std::string& name);
 	void CallOperation(const std::string& name);
+	void RunnableDefinition(const std::string& name);
 	
 	void DisassembleInstruction();
 

@@ -153,6 +153,75 @@ void Interpreter::NativeEmptyFile() {
 	push(NewValue()); // none
 }
 
+void Interpreter::NativeConvertToNum() {
+	Value v = pop();
+	float num;
+	switch (v.GetType())
+	{
+		case Value::BOOL_T:  num = (v.GetBool() ? 1 : 0); break;
+		case Value::NUM_T:	 push(v);	return;
+		case Value::NONE_T:	 num = 0;   return;
+
+		default: {
+			std::string errormsg = "Value given to 'Number()' must be of valid type";
+			StrValue* s = ExtractStrValue(&v, errormsg);
+
+			std::string str = s->ToString();
+			for (int i = 0; i < str.size(); i++) if (!isdigit(str[i])) error(TYPE_ERROR, "Input to Number(), if a string, must be a valid");
+
+			num = std::stof(s->ToString());
+			break;
+		}
+	}
+
+	push(NewValue(num));
+}
+
+void Interpreter::NativeConvertToBool() {
+	Value v = pop();
+	if (v.IsObject() && v.GetObjectValue()->IsString()) {
+		std::string m = "";
+		std::string s = ExtractStrValue(&v, m)->ToString();
+
+		if (s == "false") {
+			push(NewValue(false));
+			return;
+		}
+	}
+
+	push(NewValue(v.IsTruthy()));
+}
+
+void Interpreter::NativeConvertToStr() {
+	Value v = pop();
+	push(NewObject(v.ToString()));
+}
+
+
+void Interpreter::NativeTypeOf() {
+	Value v = pop();
+
+	std::string s;
+	switch (v.GetType()) {
+		case Value::NONE_T:	s = "NONE";		break;
+		case Value::NUM_T:	s = "NUMBER";	break;
+		case Value::BOOL_T: s = "BOOL";		break;
+
+		case Value::OBJECT_T: {
+			ObjectValue* o = v.GetObjectValue();
+			switch (o->GetType())
+			{
+				case ObjectValue::STRING_T:		s = "STRING";	break;
+				case ObjectValue::RUNNABLE_T:	s = "RUNNABLE";	break;
+				case ObjectValue::NATIVE_T:		s = "NATIVE";	break;
+			}
+		}
+	}
+
+	push(NewObject(s));
+}
+
+
 void Interpreter::DefineNative(std::string name, uint8_t arity, NativeRunnable run) {
 	AddGlobal(name, NewObject(new NativeValue(name, arity, run)));
 }
@@ -165,11 +234,17 @@ Interpreter::Interpreter(RunnableValue* body) {
 
 	globals = std::unordered_map<std::string, Value>();
 
-	DefineNative("input", 0, &Interpreter::NativeInput);
-	DefineNative("print", 1, &Interpreter::NativePrint);
-	DefineNative("ReadFromFile", 1, &Interpreter::NativeReadFromFile);
-	DefineNative("WriteToFile", 2, &Interpreter::NativeWriteToFile);
-	DefineNative("EmptyFile", 1, &Interpreter::NativeEmptyFile);
+	DefineNative("input",			0, &Interpreter::NativeInput);
+	DefineNative("print",			1, &Interpreter::NativePrint);
+	
+	DefineNative("ReadFromFile",	1, &Interpreter::NativeReadFromFile);
+	DefineNative("WriteToFile",		2, &Interpreter::NativeWriteToFile);
+	DefineNative("EmptyFile",		1, &Interpreter::NativeEmptyFile);
+
+	DefineNative("Number",			1, &Interpreter::NativeConvertToNum);
+	DefineNative("Boolean",			1, &Interpreter::NativeConvertToBool);
+	DefineNative("String",			1, &Interpreter::NativeConvertToStr);
+	DefineNative("Type",			1, &Interpreter::NativeTypeOf);
 }
 
 Interpreter::~Interpreter() {
@@ -268,10 +343,8 @@ void Interpreter::RunCommand() {
 	uint8_t opcode = CurrentChunk()->advance();
 	switch (opcode)
 	{
-		case OP_NEWLINE: {
-			if (stack.count > 0) std::cout << "\n\n\n";
-			break; 
-		} 
+		case OP_NEWLINE:	std::cout << "\n\n\n";	break; 
+
 		case OP_CONSTANT:	push(CurrentChunk()->ReadConstant(CurrentChunk()->advance())); break;
 		case OP_POP:		pop();	break;
 
@@ -354,12 +427,51 @@ void Interpreter::RunCommand() {
 		case OP_SHIFT_LEFT:		BINARY_BIT_OP(<<);	break;
 		case OP_SHIFT_RIGHT:	BINARY_BIT_OP(>>);	break;
 
-		case OP_EQUALS:		BINARY_COMP_OP(==); break;
-		case OP_LESS:		BINARY_COMP_OP(<); break;
+		case OP_EQUALS: {
+			switch (peek(0).GetType()) {
+				case Value::NUM_T: BINARY_COMP_OP(== ); break;
+				case Value::BOOL_T: {
+					Value v1 = pop();
+					Value v2 = pop();
+
+					if (v2.GetType() != Value::BOOL_T) {
+						push(NewValue(false));
+						break;
+					}
+					push(NewValue(v1.GetBool() == v2.GetBool()));
+					break;
+				}
+
+				case Value::NONE_T: {
+					Value v1 = pop();
+					Value v2 = pop();
+
+					push(NewValue(v2.IsNone()));
+					break;
+				}
+
+				case Value::OBJECT_T: {
+					ObjectValue* o1 = pop().GetObjectValue();
+					ObjectValue* o2 = pop().GetObjectValue();
+
+					if (o1->GetType() != o2->GetType()) {
+						push(NewValue(false));
+					}
+					else {
+						push(NewValue(o1->ToString() == o2->ToString()));
+					}
+
+					break;
+				}
+			}
+			break;
+		}
+		case OP_LESS:		BINARY_COMP_OP(< ); break;
 		case OP_GREATER:	BINARY_COMP_OP(>); break;
 
 		case OP_DEFINE_GLOBAL: {
 			uint8_t IdIndex = CurrentChunk()->advance();
+
 			std::string identifier = GetConstantStr(IdIndex);
 
 			if (IsDefinedGlobal(identifier)) {
@@ -697,6 +809,9 @@ void Interpreter::RunCommand() {
 
 		case OP_DEFINE_RUNNABLE: {
 			uint8_t index = CurrentChunk()->advance();
+			uint8_t linesnum = CurrentChunk()->advance();  
+			//linesnum can be discarded for now- meant to be used only when reporting errors
+
 			Value v = CurrentChunk()->ReadConstant(index);
 			if (!v.IsObject()) error(INTERNAL_ERROR, "");
 			
@@ -872,7 +987,7 @@ std::string Interpreter::TraceStack(int CodeOffset) {
 }
 
 void Interpreter::error(ExitCode e, std::string msg) {
-	int line = CurrentChunk()->CountLines();
+	int line = CurrentChunk()->CountLines(false);
 	std::cerr << "[Runtime error in line " << line << "]: " << msg << "\n";
 	throw e;
 }

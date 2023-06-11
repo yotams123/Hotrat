@@ -7,6 +7,8 @@
 #include "Chunk.h"
 #include "Value.h"
 
+//#define DEBUG_TRACE_STACK
+
 class Interpreter
 {
 private:
@@ -70,6 +72,11 @@ private:
 	void NativeReadFromFile();
 	void NativeWriteToFile();
 	void NativeEmptyFile();
+
+	void NativeConvertToNum();
+	void NativeConvertToBool();
+	void NativeConvertToStr();
+	void NativeTypeOf();
 
 public:
 	Interpreter(RunnableValue *);

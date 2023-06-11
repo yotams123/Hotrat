@@ -124,6 +124,6 @@ public:
 
 	void PatchJump(short JumpIndex, short distance);
 
-	int CountLines();
+	int CountLines(bool CompileTime);
 } Chunk;
 

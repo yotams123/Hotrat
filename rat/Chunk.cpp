@@ -6,11 +6,17 @@ Chunk::Chunk() {
 	ip = 0;
 	constants = std::vector<Value>();
 
-	this->natives.insert({ "input", true });
-	this->natives.insert({ "print", true });
+	this->natives.insert({ "input",			true });
+	this->natives.insert({ "print",			true });
+	
 	this->natives.insert({ "ReadFromFile",	true });
 	this->natives.insert({ "WriteToFile",	true });
-	this->natives.insert({ "EmptyFile", true });
+	this->natives.insert({ "EmptyFile",		true });
+
+	this->natives.insert({ "Number",		true });
+	this->natives.insert({ "Boolean",		true });
+	this->natives.insert({ "String",		true });
+	this->natives.insert({ "Type",			true });
 }
 
 Chunk::Chunk(Chunk *ToCopy) {
@@ -139,10 +145,14 @@ bool Chunk::IsAtEnd() {
 	return this->ip > i; 
 }
 
-int Chunk::CountLines() {
+
+int Chunk::CountLines(bool CompileTime) {
 	int line = 1;
 	short op = 0;
-	while (op < ip) {
+
+	short limit = (CompileTime ? this->code.size(): this->ip);
+
+	while (op < limit) {
 		switch (this->code[op]) {
 			case OP_CONSTANT:
 			case OP_DEFINE_GLOBAL:
@@ -150,11 +160,33 @@ int Chunk::CountLines() {
 			case OP_SET_GLOBAL:
 
 			case OP_INC_GLOBAL:
-			case OP_DEC_GLOBAL: {
+			case OP_DEC_GLOBAL: 
+			case OP_ADD_ASSIGN_GLOBAL:
+			case OP_SUB_ASSIGN_GLOBAL:
+			case OP_MULTIPLY_ASSIGN_GLOBAL:
+			case OP_DIVIDE_ASSIGN_GLOBAL:
+			case OP_BIT_AND_ASSIGN_GLOBAL:
+			case OP_BIT_OR_ASSIGN_GLOBAL:
+			case OP_BIT_XOR_ASSIGN_GLOBAL:
+			case OP_SHIFTL_ASSIGN_GLOBAL:
+			case OP_SHIFTR_ASSIGN_GLOBAL:
+
+			case OP_INC_LOCAL:
+			case OP_DEC_LOCAL:
+			case OP_ADD_ASSIGN_LOCAL:
+			case OP_SUB_ASSIGN_LOCAL:
+			case OP_MULTIPLY_ASSIGN_LOCAL:
+			case OP_DIVIDE_ASSIGN_LOCAL: 
+			case OP_BIT_AND_ASSIGN_LOCAL:
+			case OP_BIT_OR_ASSIGN_LOCAL:
+			case OP_BIT_XOR_ASSIGN_LOCAL:
+			case OP_SHIFTL_ASSIGN_LOCAL:
+			case OP_SHIFTR_ASSIGN_LOCAL: {
 				op += 2;
 				break;
 			}
 
+			case OP_CALL_NATIVE:
 			case OP_JUMP:
 			case OP_JUMP_IF_FALSE:
 			case OP_JUMP_IF_TRUE:
@@ -163,6 +195,12 @@ int Chunk::CountLines() {
 				break;
 			}
 			
+			case OP_DEFINE_RUNNABLE: {
+				line += code[op + 2] - 1;
+				op += 3;
+				break;
+			}
+
 			case OP_NEWLINE:	line++;
 			default:	op++;
 		}
