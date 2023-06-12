@@ -67,8 +67,9 @@ protected:
 	std::string StrRep;
 
 	ObjectType type;
-public:
+	int references;
 
+public:
 	ObjectType GetType();
 	std::string ToString();
 	
@@ -78,6 +79,9 @@ public:
 
 	void SetNext(ObjectValue* obj);
 	ObjectValue *GetNext();
+
+	void AddReference();
+	bool DeleteReference();
 };
 
 class StrValue : public ObjectValue {
@@ -132,6 +136,7 @@ private:
 
 public:
 	NativeValue(std::string name, uint8_t arity, NativeRunnable value);
+	~NativeValue();
 
 	NativeRunnable GetRunnable();
 	uint8_t GetArity();

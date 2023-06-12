@@ -61,9 +61,12 @@ void Value::SetValue(ObjectValue* o) {
 	this->type = OBJECT_T;
 	this->val.o = o;
 
-	this->StrRep = o->ToString();
-
-
+	if (o != nullptr) {
+		this->StrRep = o->ToString();
+	}
+	else {
+		this->StrRep = "None";
+	}
 }
 
 void Value::SetAsNone() {
@@ -149,12 +152,24 @@ std::string ObjectValue::ToString() {
 	return this->StrRep;
 }
 
+void ObjectValue::AddReference() {
+	this->references++;
+}
+
+bool ObjectValue::DeleteReference() {
+	this->references--;
+	if (this->references <= 0) {
+		return true;
+	}
+	return false;
+}
 
 
 StrValue::StrValue(std::string& value) {
 	this->type = STRING_T;
 	this->StrRep = value;
 	
+	this->references = 0;
 }
 
 std::string StrValue::GetValue() {
@@ -175,6 +190,7 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string 
 	this->StrRep = name;
 	this->arity = arity;
 
+	this->references = 1;
 	this->type = RUNNABLE_T;
 }
 
@@ -192,6 +208,7 @@ RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, s
 	
 	this->FrameStart = 0; // temp value
 
+	this->references = 1;
 	this->type = RUNNABLE_T;
 }
 
@@ -207,6 +224,7 @@ RunnableValue::RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue 
 
 	this->FrameStart = FrameStart;
 
+	this->references = 1;
 	this->enclosing = enclosing;
 }
 
@@ -260,9 +278,13 @@ NativeValue::NativeValue(std::string name, uint8_t arity, NativeRunnable runnabl
 	this->arity = arity;
 	this->runnable = runnable;
 
+	this->references = 1;
 	this->StrRep = "<Native runnable '" + name + "'>";
 }
 
+NativeValue::~NativeValue() {
+	references = 0;
+}
 
 NativeRunnable NativeValue::GetRunnable() {
 	return this->runnable;

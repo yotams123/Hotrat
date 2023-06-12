@@ -16,8 +16,6 @@
 #include "Debugger.h"
 #endif
 
-// TODO: garbage collector
-
 int main(int argc, char *argv[])
 {
     if (argc > 2) {

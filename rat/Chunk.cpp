@@ -65,7 +65,9 @@ uint8_t Chunk::AddConstant(Token& constant) {
 		case STRING_LITERAL:
 		case IDENTIFIER: {
 			StrValue* o = new StrValue(constant.GetLexeme());
-			val = Value(o); break;
+			val = Value(o); 
+			o->AddReference();
+			break;
 		}
 	}
 
@@ -80,6 +82,8 @@ uint8_t Chunk::AddConstant(Value v) {
 	}
 
 	constants.push_back(v);
+	if (v.IsObject()) v.GetObjectValue()->AddReference();
+
 	return (uint8_t)(constants.size() - 1); // index of constant
 }
 

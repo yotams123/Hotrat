@@ -8,6 +8,7 @@
 #include "Value.h"
 
 //#define DEBUG_TRACE_STACK
+//#define DEBUG_GC_INFO
 
 class Interpreter
 {
@@ -21,8 +22,8 @@ private:
 
 	StackStruct stack;
 
-	void push(Value value);
-	Value pop();
+	void push(Value& value);
+	Value& pop();
 
 	RunnableValue* body;
 	Chunk* CurrentChunk();
@@ -31,6 +32,7 @@ private:
 	void RunCommand();
 
 	ObjectValue* objects;
+	void RemoveObject(ObjectValue* o);
 
 	static enum ExitCode {
 		INTERPRET_OK = 0,

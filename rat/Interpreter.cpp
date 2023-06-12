@@ -13,7 +13,8 @@ Value NewValue(bool b) {
 
 Value Interpreter::NewObject(std::string& s) {
 	StrValue* res = new StrValue(s);
-	Value v = NewObject(res);
+	Value v = this->NewObject(res);
+
 	return v;
 }
 
@@ -63,24 +64,26 @@ void Interpreter::NativeInput() {
 	std::string str;
 	std::getline(std::cin, str);
 
-	push(NewObject(str));
+	Value t = NewObject(str);
+	push(t);
 }
 
 void Interpreter::NativePrint() {
-	Value v = pop();
+	Value v = peek(0);
 	std::cout << v.ToString() + "\n";
-	push(NewValue());  // none
+	pop();  // remove reference to v
+
+	Value t = NewValue();
+	push(t);  // none
 }
 
 void Interpreter::NativeReadFromFile() {
 	// reads entire file and returns a strvalue
 
-	Value v = pop();
-	if (!v.IsObject() || !(v.GetObjectValue())->IsString()) {
-		error(TYPE_ERROR, "First argument to ReadFile must be a string");
-	}
+	Value v = peek(0);
 
-	std::string FileName = v.GetObjectValue()->ToString();
+	std::string msg = "Argument to 'ReadFromFile' must be a valid path string";
+	std::string FileName = ExtractStrValue(&v, msg)->ToString();
 	LPCSTR filename = FileName.c_str();
 
 	HANDLE handle = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -102,24 +105,23 @@ void Interpreter::NativeReadFromFile() {
 	buff = nullptr;
 
 	CloseHandle(handle);
-	push(NewObject(strbuf));
+	
+	pop();	// remove reference to filename string
+
+	Value t = NewObject(strbuf);
+	push(t);
 }
 
 void Interpreter::NativeWriteToFile() {
 	// appends new text to end of file
 
-	Value BuffValue = pop();
-	if (!BuffValue.IsObject() || !BuffValue.GetObjectValue()->IsString()) error(TYPE_ERROR,
-		"Second argument to WriteToFile must be a string value");
+	Value BuffValue = peek(0);
+	std::string errormsg = "Arguments to 'WriteToFile' must be strings";
 
-	std::string buff = BuffValue.GetObjectValue()->ToString();
+	std::string buff = ExtractStrValue(&BuffValue, errormsg)->ToString();
 
-	Value FileValue = pop();
-	if (!FileValue.IsObject() || !(FileValue.GetObjectValue()->IsString())) {
-		error(TYPE_ERROR, "Second argument to WriteToFile must be a string value");
-	}
-
-	std::string filename = FileValue.GetObjectValue()->ToString();
+	Value FileValue = peek(1);
+	std::string filename = ExtractStrValue(&FileValue, errormsg)->ToString();
 	LPCSTR CFileName = filename.c_str();
 
 	HANDLE handle = CreateFileA(CFileName, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -136,25 +138,34 @@ void Interpreter::NativeWriteToFile() {
 
 	CloseHandle(handle);
 
-	push(NewValue());  // none
+	pop(); // remove reference to BuffValue
+	pop(); // remove reference to FileValue
+
+	Value t = NewValue();
+	push(t);  // none
 }
 
 void Interpreter::NativeEmptyFile() {
-	Value FileValue = pop();
+	Value FileValue = peek(0);
+
 	std::string msg = "EmptyFile's argument must be a string value";
 
 	StrValue * filestr = ExtractStrValue(&FileValue, msg);
 	std::string filename = filestr->GetValue();
 
 	HANDLE handle = CreateFileA(filename.c_str(), GENERIC_WRITE, NULL, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (!handle) error(INTERNAL_ERROR, "Couldn't open file\t\tare you sure the path is correct?");
+	if (handle == 0) error(INTERNAL_ERROR, "Couldn't open file\t\tare you sure the path is correct?");
 
 	CloseHandle(handle);
-	push(NewValue()); // none
+
+	pop(); // remove reference to FileValue
+
+	Value v = NewValue();
+	push(v); // none
 }
 
 void Interpreter::NativeConvertToNum() {
-	Value v = pop();
+	Value v = peek(0);
 	float num;
 	switch (v.GetType())
 	{
@@ -174,32 +185,45 @@ void Interpreter::NativeConvertToNum() {
 		}
 	}
 
-	push(NewValue(num));
+	pop(); // remove reference to v
+
+	Value t = NewValue();
+	push(t);
 }
 
 void Interpreter::NativeConvertToBool() {
-	Value v = pop();
+	Value v = peek(0);
 	if (v.IsObject() && v.GetObjectValue()->IsString()) {
 		std::string m = "";
 		std::string s = ExtractStrValue(&v, m)->ToString();
 
 		if (s == "false") {
-			push(NewValue(false));
+			Value v = NewValue(false);
+
+			pop(); // remove reference to v
+			push(v);
 			return;
 		}
 	}
 
-	push(NewValue(v.IsTruthy()));
+	pop(); // remove reference to v
+
+	Value t = NewValue(v.IsTruthy());
+	push(t);
 }
 
 void Interpreter::NativeConvertToStr() {
-	Value v = pop();
-	push(NewObject(v.ToString()));
+	Value v = peek(0);
+
+	Value t = NewObject(v.ToString());
+	push(v);
+
+	pop(); // remove reference to v
 }
 
 
 void Interpreter::NativeTypeOf() {
-	Value v = pop();
+	Value v = peek(0);
 
 	std::string s;
 	switch (v.GetType()) {
@@ -218,7 +242,8 @@ void Interpreter::NativeTypeOf() {
 		}
 	}
 
-	push(NewObject(s));
+	Value t = NewObject(s);
+	push(t);
 }
 
 
@@ -276,39 +301,49 @@ void Interpreter::RunCommand() {
 #endif // DEBUG_TRACE_STACK
 
 #define BINARY_NUM_OP(op)  {\
-	Value b = pop(); \
-	Value a = pop(); \
+	Value b = peek(0); \
+	Value a = peek(1); \
 	if (b.GetType() == Value::NUM_T && a.GetType() == Value::NUM_T){\
-		\
+		pop();\
+		pop();\
 		float n1 = GetNumValue(a); \
 		float n2 = GetNumValue(b); \
-		push(NewValue(n1 op n2));\
+		\
+		Value v = NewValue(n1 op n2);\
+		push(v);\
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
 	}\
 }
 
 #define BINARY_COMP_OP(op) {\
-	Value b = pop(); \
-	Value a = pop(); \
+	Value b = peek(0); \
+	Value a = peek(1); \
 	if (b.GetType() == Value::NUM_T && a.GetType() == Value::NUM_T){\
-		\
+		pop(); \
+		pop(); \
 		float n1 = GetNumValue(a); \
 		float n2 = GetNumValue(b); \
-		push(NewValue((bool)(n1 op n2)));\
+		\
+		Value v = NewValue((bool)(n1 op n2));\
+		push(v);\
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-number");\
 	}\
 }
 
 #define BINARY_BIT_OP(op) {\
-	Value b = pop(); \
-	Value a = pop(); \
+	Value b = peek(0); \
+	Value a = peek(1); \
 	if (IsIntegerValue(b) && IsIntegerValue(a)){\
+		pop(); \
+		pop(); \
 		\
 		int n1 = GetNumValue(a); \
 		int n2 = GetNumValue(b); \
-		push(NewValue((float)(n1 op n2))); \
+		\
+		Value v = NewValue((float)(n1 op n2));\
+		push(v); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform this operation on a non-integer");\
 	}\
@@ -316,10 +351,12 @@ void Interpreter::RunCommand() {
 
 #define BINARY_ASSIGN_OP(a, op, IsPlus) {\
 \
-	Value b = pop(); \
+	Value b = peek(0); \
 	if (a->GetType() == Value::NUM_T && b.GetType() == Value::NUM_T){\
+		pop(); \
 		a->SetValue(GetNumValue(*a) op GetNumValue(b));\
-		push(*a); \
+		Value v = *a; \
+		push(v); \
 	} else {\
 		std::string msg = "Can only perform this operation on two numbers"; \
 		if (IsPlus) msg += " or two strings";\
@@ -330,11 +367,13 @@ void Interpreter::RunCommand() {
 
 #define BINARY_BIT_ASSIGN_OP(a, op) {\
 \
-	Value b = pop(); \
+	Value b = peek(0); \
 	\
 	if (IsIntegerValue(*a) && IsIntegerValue(b) ){\
+		pop(); \
 		a->SetValue((float)((int)GetNumValue(*a) op (int)GetNumValue(b))); \
-		push(*a); \
+		Value v = *a;\
+		push(v); \
 	} else {\
 		error(TYPE_ERROR, "Can't perform bitwise operations on non-integer types");\
 	}\
@@ -343,31 +382,42 @@ void Interpreter::RunCommand() {
 	uint8_t opcode = CurrentChunk()->advance();
 	switch (opcode)
 	{
-		case OP_NEWLINE:	std::cout << "\n\n\n";	break; 
+		case OP_NEWLINE:	break; 
 
-		case OP_CONSTANT:	push(CurrentChunk()->ReadConstant(CurrentChunk()->advance())); break;
+		case OP_CONSTANT: {
+			Value v = CurrentChunk()->ReadConstant(CurrentChunk()->advance());
+			push(v);
+			break;
+		}
+
 		case OP_POP:		pop();	break;
 
 		case OP_NONE: {
-			push(Value());
+			Value v = NewValue();
+			push(v);
 			break;
 		}
 
 		case OP_TRUE: {
-			push(NewValue(true));
+			Value v = NewValue(true);
+			push(v);
 			break;
 		}
 		case OP_FALSE: {
-			push(NewValue(false));
+			Value v = NewValue(false);
+			push(v);
 			break;
 		}
 
 		case OP_NEGATE: {
-			Value a = pop();
+			Value a = peek(0);
 
 			if (a.GetType() == Value::NUM_T) {
 				float n = GetNumValue(a);
-				push(NewValue(-n));
+				Value v = NewValue(-n);
+
+				pop();
+				push(v);
 			}
 			else {
 				error(TYPE_ERROR, "Negating a non-number type");
@@ -377,18 +427,25 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_NOT: {
-			Value a = pop();
+			Value a = peek(0);
 			Value::datatype t = a.GetType();
 			switch (t) {
 				case Value::NUM_T: {
+					pop();
+
 					float n = GetNumValue(a);
-					if (n / 1 == n)	push(NewValue((float)~(int)n));
+					Value v = NewValue((float)(~(int)n));
+					if (n / 1 == n)	push(v);
 					else error(TYPE_ERROR, "Can't perform bitwise operation on a non-integer");
 					break;
 				}
 				case Value::BOOL_T: {
+					pop();
+
 					bool b = GetBoolValue(a);
-					push(NewValue(!b));
+
+					Value v = NewValue(!b);
+					push(v);
 					break;
 				}
 			}
@@ -402,12 +459,17 @@ void Interpreter::RunCommand() {
 
 					std::string msg = "Can only perform this operation on two numbers or two strings";
 
-					Value v2 = pop();
-					Value v1 = pop();
+					Value v2 = peek(0);
+					Value v1 = peek(1);
 					StrValue* a = ExtractStrValue(&v1, msg);
 					StrValue* b = ExtractStrValue(&v2, msg);
 
-					push(NewObject((std::string&)(*a + *b)));
+					Value v = NewObject((std::string&)(*a + *b));
+					
+					pop();  // remove reference to v2
+					pop();  // remove reference to v1 
+
+					push(v);
 					break;
 				}
 				default:
@@ -431,36 +493,56 @@ void Interpreter::RunCommand() {
 			switch (peek(0).GetType()) {
 				case Value::NUM_T: BINARY_COMP_OP(== ); break;
 				case Value::BOOL_T: {
-					Value v1 = pop();
 					Value v2 = pop();
+					Value v1 = peek(0);
 
-					if (v2.GetType() != Value::BOOL_T) {
-						push(NewValue(false));
+					if (v1.GetType() != Value::BOOL_T) {
+						pop();
+
+						Value v = NewValue(false);
+						push(v);
 						break;
 					}
-					push(NewValue(v1.GetBool() == v2.GetBool()));
+					Value v = NewValue(v1.GetBool() == v2.GetBool());
+					push(v);
 					break;
 				}
 
 				case Value::NONE_T: {
-					Value v1 = pop();
 					Value v2 = pop();
+					Value v1 = peek(0);
 
-					push(NewValue(v2.IsNone()));
+					Value v = NewValue(v2.IsNone());
+					
+					pop(); // delete reference to v1
+					push(v);
 					break;
 				}
 
 				case Value::OBJECT_T: {
-					ObjectValue* o1 = pop().GetObjectValue();
-					ObjectValue* o2 = pop().GetObjectValue();
+					ObjectValue* o2 = peek(0).GetObjectValue();
 
+					Value IsEqual;
+					if (!peek(1).IsObject()) {
+						IsEqual = NewValue(false);
+
+						pop(); // delete reference to o2
+						pop();
+						push(IsEqual);
+						break;
+					}
+
+					ObjectValue* o1 = peek(1).GetObjectValue();
 					if (o1->GetType() != o2->GetType()) {
-						push(NewValue(false));
+						IsEqual = NewValue(false);
+						
 					}
 					else {
-						push(NewValue(o1->ToString() == o2->ToString()));
+						IsEqual = NewValue((o1->ToString() == o2->ToString()) && (o1->GetType() == o2->GetType()));
 					}
 
+					pop(); // delete reference to o2
+					pop(); // delete reference to o1
 					break;
 				}
 			}
@@ -482,8 +564,10 @@ void Interpreter::RunCommand() {
 				error(REDECLARED_RAT, "rat with the name '" + identifier + "' already exists");
 			}
 
-			Value v = pop();
+			Value v = peek(0);
 			AddGlobal(identifier, v);
+			pop();
+
 			break;
 		}
 
@@ -500,8 +584,18 @@ void Interpreter::RunCommand() {
 
 				if (o->GetType() == ObjectValue::RUNNABLE_T) error(TYPE_ERROR, "Can't reassign a runnable");
 				else if (o->GetType() == ObjectValue::NATIVE_T) error(TYPE_ERROR, "Can't set a value to a native runnable");
+
+				bool deleted = o->DeleteReference();
+				if (deleted) {
+					RemoveObject(o);
+					delete o;
+					globals[identifier].SetValue(nullptr);
+				}
 			}
 			globals[identifier] = v;
+			if (v.IsObject()) {
+				v.GetObjectValue()->AddReference();
+			}
 			break;
 		}
 						  
@@ -522,8 +616,21 @@ void Interpreter::RunCommand() {
 
 		case OP_SET_LOCAL: {
 			uint8_t FrameSlot = CurrentChunk()->advance();
-			this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1] = peek(0);
 
+			Value v = this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1];
+			if (v.IsObject()) {
+				bool deleted = v.GetObjectValue()->DeleteReference();
+				if (deleted) {
+					RemoveObject(v.GetObjectValue());
+					delete v.GetObjectValue();
+					v.SetValue(nullptr);
+				}
+			}
+
+			this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1] = peek(0);
+			if (peek(0).IsObject()) {
+				peek(0).GetObjectValue()->AddReference();
+			}
 			break;
 		}
 
@@ -575,7 +682,7 @@ void Interpreter::RunCommand() {
 			}
 
 			var->SetValue(GetNumValue(*var) - 1);
-			push(var);
+			push(*var);
 
 			break;
 		}
@@ -588,12 +695,15 @@ void Interpreter::RunCommand() {
 					if (o->IsString()) {
 						std::string ErrorMsg = "Can only perform this operation on two strings or two numbers";
 
-						Value v = pop();
+						Value v = peek(0);
 						StrValue* b = ExtractStrValue(&v, ErrorMsg);
 						StrValue* a = ExtractStrValue(FindGlobal(), ErrorMsg);
 
 						a->SetValue((std::string&)(*a + *b));
-						push(a);
+						pop(); // delete reference to v
+						
+						Value v2 = NewObject(a);
+						push(v2);
 					}
 					
 					break;
@@ -601,7 +711,7 @@ void Interpreter::RunCommand() {
 
 				default:{
 					Value* a = FindGlobal();
-					BINARY_ASSIGN_OP(a, +, false);
+					BINARY_ASSIGN_OP(a, +, false); // macro will report a type error
 					break;
 				}
 			}
@@ -613,7 +723,7 @@ void Interpreter::RunCommand() {
 				case Value::OBJECT_T: {
 
 					std::string msg = "Can only perform this operation on two numbers or two strings";
-					Value v = pop();
+					Value v = peek(0); // don't want to remove reference yet
 					StrValue* b = ExtractStrValue(&v, msg);
 
 					Value* va = FindLocal();
@@ -622,6 +732,8 @@ void Interpreter::RunCommand() {
 					a->SetValue((std::string&)(*a + *b));
 					
 					va->SetValue(a);
+
+					pop(); // remove reference to v
 					push(*va);
 					break;
 				}
@@ -828,7 +940,7 @@ void Interpreter::RunCommand() {
 		case OP_CALL: {
 			Value* called = FindGlobal();
 
-			if (called->IsObject() && ((ObjectValue *)called)->IsRunnable() ){
+			if (called->IsObject() && called->GetObjectValue()->IsRunnable()) {
 				RunnableValue* runnable = ((RunnableValue*)called->GetObjectValue());
 				uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
 
@@ -860,16 +972,23 @@ void Interpreter::RunCommand() {
 				error(TYPE_ERROR, "Can't call an object that isn't a runnable");
 			}
 
+			if (peek(0).IsObject()) peek(0).GetObjectValue()->AddReference(); // so it doesn't get deleted when popping before call frame
 			Value ReturnValue = pop();
+
 			pop(); // remove runnable from stack
 			push(ReturnValue);
 			break;
 		}
 
 		case OP_RETURN: {
+			if (peek(0).IsObject()) {
+				peek(0).GetObjectValue()->AddReference(); // so it won't be deleted when popped before frame
+			}
 			Value ReturnVal = pop();
 
-			this->stack.count = this->body->GetFrameStart();  // pop frame off the stack
+			for (int i = this->stack.count; i > this->body->GetFrameStart(); i--) {
+				pop();  // pop frame off the stack
+			}
 
 			push(ReturnVal);
 
@@ -900,20 +1019,63 @@ void Interpreter::SetBody(RunnableValue* body) {
 }
 
 
-Value Interpreter::pop() {
+Value& Interpreter::pop() {
 	if (this->stack.count <= 0) {
 		error(STACK_UNDERFLOW, "Popping from empty stack");
 	}
 
 	stack.count--;
+
 	Value i = stack.stk[stack.count];
 
-	return i;
+	if (i.IsObject()) {
+		bool deleted = i.GetObjectValue()->DeleteReference();
+		if (deleted) {
+			RemoveObject(i.GetObjectValue());
+			stack.stk[stack.count].SetValue(nullptr);
+		}
+	}
+
+	return stack.stk[stack.count];
 }
 
-void Interpreter::push(Value value) {
+void Interpreter::RemoveObject(ObjectValue* o) {
+	if (o == nullptr) return;
+
+	if (this->objects == o) {
+		this->objects = o->GetNext();
+
+#ifdef DEBUG_GC_INFO
+		std::cout << "[Garbage collector] Deallocated " + o->ToString() + "\n";
+#endif
+		delete o;
+		return;
+	}
+
+	ObjectValue* curr = this->objects;
+	while (curr != nullptr && curr->GetNext() != o) {
+		curr = curr->GetNext();
+	}
+
+	if (curr != nullptr) {
+		curr->SetNext(curr->GetNext()->GetNext());
+	}
+	
+#ifdef DEBUG_GC_INFO
+	std::cout << "[Garbage collector] Deallocated " + o->ToString() + "\n";
+#endif
+
+	delete o;
+}
+
+
+
+void Interpreter::push(Value& value) {
 	if (stack.count == StackSize) error(STACK_OVERFLOW, "Stack limit exceeded");
 	stack.stk[stack.count++] = value;
+
+	if (value.IsObject()) value.GetObjectValue()->AddReference();
+
 	return;
 }
 
@@ -970,6 +1132,9 @@ Value *Interpreter::FindGlobal() {
 
 void Interpreter::AddGlobal(std::string& name, Value value) {
 	this->globals.insert({ name, value });
+	if (value.IsObject()) {
+		value.GetObjectValue()->AddReference();
+	}
 }
 
 bool Interpreter::IsDefinedGlobal(std::string& identifier ) {
