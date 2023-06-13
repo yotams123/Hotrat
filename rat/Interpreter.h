@@ -8,7 +8,7 @@
 #include "Value.h"
 
 //#define DEBUG_TRACE_STACK
-//#define DEBUG_GC_INFO
+#define DEBUG_GC_INFO
 
 class Interpreter
 {

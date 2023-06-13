@@ -61,9 +61,15 @@ bool IsIntegerValue(Value& f) {
 
 
 void Interpreter::NativeInput() {
+	Value PreInput = peek(0);
+	std::string errormsg = "Argument to 'input' must be a string";
+	StrValue * s = ExtractStrValue(&PreInput, errormsg);
+	
+	std::cout << s->GetValue();
 	std::string str;
 	std::getline(std::cin, str);
 
+	pop();  // remove reference to 'PreInput'
 	Value t = NewObject(str);
 	push(t);
 }
@@ -87,7 +93,8 @@ void Interpreter::NativeReadFromFile() {
 	LPCSTR filename = FileName.c_str();
 
 	HANDLE handle = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (handle == INVALID_HANDLE_VALUE) error(INTERNAL_ERROR, "Error opening the file\t\tare you sure the path is correct?");
+	if (handle == INVALID_HANDLE_VALUE) error(INTERNAL_ERROR, "There was an error opening the file '" + FileName + 
+		"'.\n\tAre you sure the path is correct ? ");
 	
 	DWORD NumToReadH;
 	DWORD NumToReadL = GetFileSize(handle, &NumToReadH);
@@ -126,7 +133,8 @@ void Interpreter::NativeWriteToFile() {
 
 	HANDLE handle = CreateFileA(CFileName, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE) {
-		error(INTERNAL_ERROR, "Couldn't open file\t\tare you sure the path is correct?");
+		error(INTERNAL_ERROR, "There was an error opening the file '" + filename +
+			"'.\n\tAre you sure the path is correct ? ");
 	}
 
 	SetFilePointer(handle, 0, NULL, FILE_END);
@@ -154,7 +162,8 @@ void Interpreter::NativeEmptyFile() {
 	std::string filename = filestr->GetValue();
 
 	HANDLE handle = CreateFileA(filename.c_str(), GENERIC_WRITE, NULL, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (handle == 0) error(INTERNAL_ERROR, "Couldn't open file\t\tare you sure the path is correct?");
+	if (handle == 0) error(INTERNAL_ERROR, "There was an error opening the file '" + filename +
+		"'.\n\tAre you sure the path is correct ? ");
 
 	CloseHandle(handle);
 
@@ -216,9 +225,9 @@ void Interpreter::NativeConvertToStr() {
 	Value v = peek(0);
 
 	Value t = NewObject(v.ToString());
-	push(v);
-
 	pop(); // remove reference to v
+	
+	push(t);
 }
 
 
@@ -243,6 +252,8 @@ void Interpreter::NativeTypeOf() {
 	}
 
 	Value t = NewObject(s);
+	
+	pop(); // remove reference to v
 	push(t);
 }
 
@@ -259,7 +270,7 @@ Interpreter::Interpreter(RunnableValue* body) {
 
 	globals = std::unordered_map<std::string, Value>();
 
-	DefineNative("input",			0, &Interpreter::NativeInput);
+	DefineNative("input",			1, &Interpreter::NativeInput);
 	DefineNative("print",			1, &Interpreter::NativePrint);
 	
 	DefineNative("ReadFromFile",	1, &Interpreter::NativeReadFromFile);
@@ -977,6 +988,8 @@ void Interpreter::RunCommand() {
 
 			pop(); // remove runnable from stack
 			push(ReturnValue);
+			if (ReturnValue.IsObject()) peek(0).GetObjectValue()->DeleteReference();
+
 			break;
 		}
 

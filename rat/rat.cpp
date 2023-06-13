@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 
-#define DEBUG_PRINT_CODE
+//#define DEBUG_PRINT_CODE
 
 #include "rat.h"
 
