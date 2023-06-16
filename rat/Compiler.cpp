@@ -733,8 +733,8 @@ Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
-	ParseRule rule = GetRule(CurrentToken().GetType());
-	ParseFunction PrefixRule = rule.prefix;
+	ParseRule rule = GetRule(CurrentToken().GetType());  // get relevant rule (line from table)
+	ParseFunction PrefixRule = rule.prefix;				 // get relevant prefix function
 
 	if (PrefixRule == nullptr) {
 		ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
@@ -747,11 +747,13 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 
 	while (precedence <= GetRule(CurrentToken().GetType()).precedence) {
 
-		rule = GetRule(CurrentToken().GetType());
-		ParseFunction InfixRule = rule.infix;
+		rule = GetRule(CurrentToken().GetType());	// get relevant rule (line from table)
+		ParseFunction InfixRule = rule.infix;		// get relevant infix function
+
 		if (InfixRule == nullptr) {
 			ErrorAtCurrent(UNEXPECTED_TOKEN, "Expected expression");
 		}
+
 		(this->*InfixRule)(CanAssign);  // call infix method
 	}
 	if (match(EQUALS)) { // token hasn't been consumed, meaning assignment target was invalid

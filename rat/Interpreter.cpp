@@ -131,6 +131,13 @@ void Interpreter::NativeWriteToFile() {
 	std::string filename = ExtractStrValue(&FileValue, errormsg)->ToString();
 	LPCSTR CFileName = filename.c_str();
 
+	DWORD attribute = GetFileAttributesA(CFileName);
+	if (attribute != INVALID_FILE_ATTRIBUTES) {
+		bool ReadOnly = attribute & FILE_ATTRIBUTE_READONLY;
+		if (ReadOnly) error(INTERNAL_ERROR, "The file '" + filename +
+			"' cannot be written to.\n\tAre you sure the path is correct ? ");
+	}
+
 	HANDLE handle = CreateFileA(CFileName, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE) {
 		error(INTERNAL_ERROR, "There was an error opening the file '" + filename +
@@ -160,6 +167,13 @@ void Interpreter::NativeEmptyFile() {
 
 	StrValue * filestr = ExtractStrValue(&FileValue, msg);
 	std::string filename = filestr->GetValue();
+
+	DWORD attribute = GetFileAttributesA(filename.c_str());
+	if (attribute != INVALID_FILE_ATTRIBUTES) {
+		bool ReadOnly = attribute & FILE_ATTRIBUTE_READONLY;
+		if (ReadOnly) error(INTERNAL_ERROR, "The file '" + filename +
+			"' cannot be emptied.\n\tAre you sure the path is correct ? ");
+	}
 
 	HANDLE handle = CreateFileA(filename.c_str(), GENERIC_WRITE, NULL, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == 0) error(INTERNAL_ERROR, "There was an error opening the file '" + filename +
@@ -1059,7 +1073,7 @@ void Interpreter::RemoveObject(ObjectValue* o) {
 		this->objects = o->GetNext();
 
 #ifdef DEBUG_GC_INFO
-		std::cout << "[Garbage collector] Deallocated " + o->ToString() + "\n";
+		std::cout << "[Garbage collector] Deallocated '" + o->ToString() + "'\n";
 #endif
 		delete o;
 		return;
@@ -1075,7 +1089,7 @@ void Interpreter::RemoveObject(ObjectValue* o) {
 	}
 	
 #ifdef DEBUG_GC_INFO
-	std::cout << "[Garbage collector] Deallocated " + o->ToString() + "\n";
+	std::cout << "[Garbage collector] Deallocated '" + o->ToString() + "'\n";
 #endif
 
 	delete o;
@@ -1166,6 +1180,14 @@ std::string Interpreter::TraceStack(int CodeOffset) {
 
 void Interpreter::error(ExitCode e, std::string msg) {
 	int line = CurrentChunk()->CountLines(false);
-	std::cerr << "[Runtime error in line " << line << "]: " << msg << "\n";
+	std::string bodyname = "script";
+
+	if (body->GetEnclosing()) { // in a runnable
+		RunnableValue* script = body->GetEnclosing();
+		line += script->GetChunk()->CountLines(body->ToString());
+		bodyname = body->ToString();
+	}
+
+	std::cerr << "[Runtime error in " + bodyname + " in line " << line << "]: " << msg << "\n";
 	throw e;
 }

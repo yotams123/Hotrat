@@ -125,5 +125,6 @@ public:
 	void PatchJump(short JumpIndex, short distance);
 
 	int CountLines(bool CompileTime);
+	int CountLines(std::string RunnableName); 
 } Chunk;
 

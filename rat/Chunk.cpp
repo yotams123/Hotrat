@@ -212,6 +212,72 @@ int Chunk::CountLines(bool CompileTime) {
 	return line;
 }
 
+int Chunk::CountLines(std::string RunnableName) {
+	int line = 1;
+	short op = 0;
+
+	while (true) {
+		switch (this->code[op]) {
+			case OP_CONSTANT:
+			case OP_DEFINE_GLOBAL:
+			case OP_GET_GLOBAL:
+			case OP_SET_GLOBAL:
+
+			case OP_INC_GLOBAL:
+			case OP_DEC_GLOBAL:
+			case OP_ADD_ASSIGN_GLOBAL:
+			case OP_SUB_ASSIGN_GLOBAL:
+			case OP_MULTIPLY_ASSIGN_GLOBAL:
+			case OP_DIVIDE_ASSIGN_GLOBAL:
+			case OP_BIT_AND_ASSIGN_GLOBAL:
+			case OP_BIT_OR_ASSIGN_GLOBAL:
+			case OP_BIT_XOR_ASSIGN_GLOBAL:
+			case OP_SHIFTL_ASSIGN_GLOBAL:
+			case OP_SHIFTR_ASSIGN_GLOBAL:
+
+			case OP_INC_LOCAL:
+			case OP_DEC_LOCAL:
+			case OP_ADD_ASSIGN_LOCAL:
+			case OP_SUB_ASSIGN_LOCAL:
+			case OP_MULTIPLY_ASSIGN_LOCAL:
+			case OP_DIVIDE_ASSIGN_LOCAL:
+			case OP_BIT_AND_ASSIGN_LOCAL:
+			case OP_BIT_OR_ASSIGN_LOCAL:
+			case OP_BIT_XOR_ASSIGN_LOCAL:
+			case OP_SHIFTL_ASSIGN_LOCAL:
+			case OP_SHIFTR_ASSIGN_LOCAL: {
+				op += 2;
+				break;
+			}
+
+			case OP_CALL_NATIVE:
+			case OP_JUMP:
+			case OP_JUMP_IF_FALSE:
+			case OP_JUMP_IF_TRUE:
+			case OP_LOOP: {
+				op += 3;
+				break;
+			}
+
+			case OP_DEFINE_RUNNABLE: {
+				uint8_t index = this->code[op + 1];
+				if (constants[index].ToString() == RunnableName) {
+					return line - 1;
+				}
+				else {
+					line += this->code[op + 2];
+					op += 3;
+				}
+				break;
+			}
+
+			case OP_NEWLINE:	line++;
+			default:	op++;
+		}
+	}
+	return line;
+}
+
 short Chunk::GetOffset() {
 	return this->ip;
 }
