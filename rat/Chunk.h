@@ -102,7 +102,7 @@ public:
 
 	
 	uint8_t AddConstant(Token&);
-	uint8_t AddConstant(Value v);	// to add runnables
+	uint8_t AddConstant(Value v);
 	void ClearConstants();
 	short FindRunnable(Token& name);
 	
@@ -125,6 +125,6 @@ public:
 	void PatchJump(short JumpIndex, short distance);
 
 	int CountLines(bool CompileTime);
-	int CountLines(std::string RunnableName); 
+	int CountLines(std::string& RunnableName); 
 } Chunk;
 

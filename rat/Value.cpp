@@ -1,7 +1,6 @@
 #include "Value.h"
 
 Value::Value() {
-	this->next = nullptr;
 
 	this->type = NONE_T; // temporary value, will be set by the actual type's initializer
 	this->StrRep = "None";
@@ -40,12 +39,12 @@ Value::datatype Value::GetType() {
 }
 
 
-void Value::SetValue(float f) {
+void Value::SetValue(float n) {
 	this->type = NUM_T;
-	this->val.n = f;
+	this->val.n = n;
 
 	std::stringstream s;
-	s << f;
+	s << n;
 	this->StrRep = s.str();
 }
 
@@ -71,6 +70,8 @@ void Value::SetValue(ObjectValue* o) {
 
 void Value::SetAsNone() {
 	this->type = NONE_T;
+
+	this->StrRep = "None";
 }
 
 
@@ -148,7 +149,7 @@ bool ObjectValue::IsNative() {
 	return this->type == NATIVE_T;
 }
 
-std::string ObjectValue::ToString() {
+std::string& ObjectValue::ToString() {
 	return this->StrRep;
 }
 
@@ -172,7 +173,7 @@ StrValue::StrValue(std::string& value) {
 	this->references = 0;
 }
 
-std::string StrValue::GetValue() {
+std::string& StrValue::GetValue() {
 	return this->StrRep;
 }
 
@@ -185,7 +186,7 @@ std::string StrValue::operator+(StrValue next) {
 }
 
 
-RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name) {
+RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string& name) {
 	this->ByteCode = ByteCode;
 	this->StrRep = name;
 	this->arity = arity;
@@ -194,7 +195,7 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string 
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string name) {
+RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name) {
 	this->ByteCode = ByteCode;
 
 	this->name = name;
@@ -273,7 +274,7 @@ short RunnableValue::ResolveLocal(std::string Identifier) {
 }
 
 
-NativeValue::NativeValue(std::string name, uint8_t arity, NativeRunnable runnable) {
+NativeValue::NativeValue(std::string& name, uint8_t arity, NativeRunnable runnable) {
 	this->type = NATIVE_T;
 	this->arity = arity;
 	this->runnable = runnable;
@@ -283,7 +284,6 @@ NativeValue::NativeValue(std::string name, uint8_t arity, NativeRunnable runnabl
 }
 
 NativeValue::~NativeValue() {
-	references = 0;
 }
 
 NativeRunnable NativeValue::GetRunnable() {

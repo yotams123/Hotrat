@@ -51,7 +51,6 @@ private:
 
 		BREAK_IF = 150,
 		BREAK_WHILE,
-		BREAK_FOR,
 		BREAK_REPEAT,
 		BREAK_RUNNABLE,
 		BREAK_RAT
@@ -84,7 +83,6 @@ private:
 	void ErrorAtCurrent(int e, std::string msg);
 
 	void synchronize();
-	int CountLines();
 
 	// parsing
 	void literal(bool CanAssign);
@@ -123,12 +121,10 @@ private:
 	// bytecode
 	void EmitByte(uint8_t byte);
 	void EmitBytes(uint8_t byte1, uint8_t byte2);
-	void EmitReturn();
 
 	short EmitJump(Opcode JumpInstruction);
 	void PatchJump(short JumpIndex);
 	void PatchLoop(short LoopStart);
-
 
 	uint8_t SafeAddConstant(Token Constant);
 	uint8_t SafeAddConstant(Value v);  // for objects that have to be defined as values before insertion

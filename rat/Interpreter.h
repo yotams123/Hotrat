@@ -24,6 +24,7 @@ private:
 
 	void push(Value& value);
 	Value& pop();
+	Value& peek(int depth);
 
 	RunnableValue* body;
 	Chunk* CurrentChunk();
@@ -85,6 +86,4 @@ public:
 	~Interpreter();
 
 	int interpret();
-	Value& peek(int depth);
-
 };

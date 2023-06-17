@@ -59,8 +59,8 @@ void RunPrompt() {
     }
 }
 
-int Run(std::string& line) {
-    Scanner *scanner = new Scanner(line);
+int Run(std::string& src) {
+    Scanner *scanner = new Scanner(src);
     std::vector<Token>  tokens = scanner->ScanTokens();
 
     if (tokens.empty()) return 1; // scanner error

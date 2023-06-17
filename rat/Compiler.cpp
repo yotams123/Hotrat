@@ -57,7 +57,8 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[WHILE] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 	RuleTable[REPEAT] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 
-	CurrentBody = new RunnableValue(new Chunk, 0, "script");
+	std::string bodyname = "script";
+	CurrentBody = new RunnableValue(new Chunk, 0, bodyname);
 }
 
 Compiler::~Compiler() {
@@ -93,9 +94,9 @@ void Compiler::ErrorAtCurrent(int e, std::string msg) {
 }
 
 void Compiler::error(int e, std::string msg, Token where) {
-	int line = CountLines();
+	int line = CurrentChunk()->CountLines(true);
 	std::string lexeme =  "'" + where.GetLexeme() + "'";
-	if (lexeme == "'\n'") lexeme = "end";
+	if (lexeme == "'\n'") lexeme = "end of line";
 
 	std::cout << "[Compilation error in line " << line << ", at " << lexeme	<< " ]: " << msg << "\n";
 	HadError = true;
@@ -107,18 +108,6 @@ void Compiler::synchronize() {
 		advance();
 	}
 	return;
-}
-
-int Compiler::CountLines() {
-	int lines = 1;
-	int i = 0;
-	while (i != CurrentTokenOffset) {
-		if (tokens[i].GetType() == TOKEN_NEWLINE) {
-			lines++;
-		}
-		i++;
-	}
-	return lines;
 }
 
 void Compiler::literal(bool CanAssign) {
@@ -158,9 +147,6 @@ uint8_t Compiler::block() {
 
 			case ENDWHILE:
 				return BREAK_WHILE;
-
-			case ENDFOR:
-				return BREAK_FOR;
 
 			case ENDRUNNABLE:
 				return BREAK_RUNNABLE;
@@ -798,10 +784,6 @@ void Compiler::EmitByte(uint8_t byte) {
 
 void Compiler::EmitBytes(uint8_t byte1, uint8_t byte2) {
 	CurrentChunk()->Append(byte1, byte2);
-}
-
-void Compiler::EmitReturn() {
-	CurrentChunk()->Append(OP_RETURN);
 }
 
 

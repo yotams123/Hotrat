@@ -46,7 +46,6 @@ public:
 
 	bool IsObject();
 
-	Value* next;
 	datatype GetType();
 
 	std::string& ToString();
@@ -71,7 +70,7 @@ protected:
 
 public:
 	ObjectType GetType();
-	std::string ToString();
+	std::string& ToString();
 	
 	bool IsString();
 	bool IsRunnable();
@@ -88,7 +87,7 @@ class StrValue : public ObjectValue {
 public:
 	StrValue(std::string& value);
 
-	std::string GetValue();
+	std::string& GetValue();
 	void SetValue(std::string& s);
 
 	std::string operator+(StrValue next);
@@ -108,8 +107,8 @@ protected:
 	uint8_t FrameStart; // index at which the frame starts
 
 public:
-	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string name);
-	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string name);	// for use during compile time
+	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string& name);
+	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name);	// for use during compile time
 	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart);	// for use during the runtime
 	~RunnableValue();
 
@@ -135,7 +134,7 @@ private:
 	NativeRunnable runnable;
 
 public:
-	NativeValue(std::string name, uint8_t arity, NativeRunnable value);
+	NativeValue(std::string& name, uint8_t arity, NativeRunnable value);
 	~NativeValue();
 
 	NativeRunnable GetRunnable();

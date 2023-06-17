@@ -212,7 +212,7 @@ int Chunk::CountLines(bool CompileTime) {
 	return line;
 }
 
-int Chunk::CountLines(std::string RunnableName) {
+int Chunk::CountLines(std::string& RunnableName) {
 	int line = 1;
 	short op = 0;
 
