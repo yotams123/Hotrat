@@ -13,7 +13,7 @@ Scanner::Scanner(std::string src) {
 
 Scanner::~Scanner(){}
 
-std::vector<Token> Scanner::ScanTokens() {
+std::vector<Token>& Scanner::ScanTokens() {
 	Token token = Token(TOKEN_EOF, ""); // placeholder value
 	do { 
 		token = ScanToken();

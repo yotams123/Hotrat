@@ -2,11 +2,11 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <thread>
 
-//#define DEBUG_PRINT_CODE
+#define DEBUG_PRINT_CODE
 
 #include "rat.h"
-
 #include "Scanner.h"
 #include "Token.h"
 #include "Compiler.h"
@@ -60,22 +60,33 @@ void RunPrompt() {
 }
 
 int Run(std::string& line) {
-    Scanner scanner = Scanner(line);
-    std::vector<Token>  tokens = scanner.ScanTokens();
+    Scanner *scanner = new Scanner(line);
+    std::vector<Token>  tokens = scanner->ScanTokens();
 
     if (tokens.empty()) return 1; // scanner error
+    delete scanner;
 
-    Compiler compiler = Compiler(tokens);
-    RunnableValue *script = compiler.Compile();
+    Compiler *compiler = new Compiler(tokens);
+    RunnableValue *script = compiler->Compile();
 
     if (!script) return 100; // compilation error
+    delete compiler;
+
 #ifdef DEBUG_PRINT_CODE
-    Debugger debugger = Debugger(script->GetChunk(), (std::string)"script");
-    debugger.DisassembleChunk();
+    Debugger *debugger = new Debugger(script->GetChunk(), (std::string)"script");
+    
+    std::thread DbgThread(&Debugger::DisassembleChunk, debugger);
 #endif // DEBUG_PRINT_CODE
 
-    Interpreter interpreter = Interpreter(script);
-    int code = interpreter.interpret();
+
+    Interpreter *interpreter = new Interpreter(script);
+    int code = interpreter->interpret();
+    delete interpreter;
+
+#ifdef DEBUG_PRINT_CODE
+    DbgThread.join();
+    delete debugger;
+#endif // DEBUG_PRINT_CODE
 
     return code;
 }
