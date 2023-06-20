@@ -636,7 +636,7 @@ void Compiler::RunnableDeclaration() {
 	consume(COLON, "Expected ':' after function declaration");
 	consume(TOKEN_NEWLINE, "Expected newline after function declaration");
 
-	CurrentBody = new RunnableValue(new Chunk, args, identifier.GetLexeme());
+	CurrentBody = new RunnableValue(CurrentBody, new Chunk, args, identifier.GetLexeme());
 	this->ct = COMPILE_RUNNABLE;
 
 	uint8_t BlockCode = block();
@@ -850,7 +850,7 @@ void Compiler::PatchJump(short JumpIndex) {
 }
 
 void Compiler::PatchLoop(short LoopStart) {
-	// Emit bytes to jump back to LoopStart
+	// Emit bytes to jump back to Start of loop
 
 	EmitByte(OP_LOOP);
 	EmitBytes(0, 0);

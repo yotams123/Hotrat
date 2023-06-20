@@ -203,7 +203,7 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string&
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name) {
+RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name) {
 	// Constructor for use during compile-time. Bytecode, args and name are all known at compile time.
 	
 	this->ByteCode = ByteCode;
@@ -213,6 +213,8 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, std::vector<std::string>& a
 	
 	this->arity = args.size();
 
+	this->enclosing = enclosing;
+
 	for (int i = 0; i < args.size(); i++) this->locals.push_back(args[i]);
 	
 	this->FrameStart = 0; // temp value
@@ -220,6 +222,11 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, std::vector<std::string>& a
 }
 
 RunnableValue::RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart) {
+	// Constructor for use during runtime.
+	// The Value returned is a copy of the original RunnableValue.
+	// This allows for recursion
+	// The start slot of the callframe is also known at runtime.
+
 	this->ByteCode = chunk;
 
 	this->name = ToCopy->name;
@@ -265,12 +272,16 @@ RunnableValue* RunnableValue::GetEnclosing() {
 }
 
 uint8_t RunnableValue::AddLocal(std::string Identifier) {
+	// Add a new local variable
+
 	this->locals.push_back(Identifier);
 	return this->locals.size() - 1; // return the index of the last inserted item
 }
 
 
 short RunnableValue::ResolveLocal(std::string Identifier) {
+	// Find the stack slot of a local variable
+	
 	for (int i = 0; i < this->locals.size(); i++) {
 		if (this->locals[i] == Identifier) return i;
 	}
