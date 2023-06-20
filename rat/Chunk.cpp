@@ -40,7 +40,7 @@ std::vector<Value>& Chunk::GetConstants() {
 
 
 uint8_t Chunk::AddConstant(Token& constant) {
-
+	// Extract a constant from the token and insert it into the table
 	if (constants.size() >= 256) {
 		throw std::string("Constants overflow");
 	}
@@ -76,7 +76,7 @@ uint8_t Chunk::AddConstant(Token& constant) {
 }
 
 uint8_t Chunk::AddConstant(Value v) {
-
+	// Add the constant value 'v' to the constants table
 	if (constants.size() >= 256) {
 		throw std::string("Constants overflow");
 	}
@@ -95,6 +95,7 @@ Value Chunk::ReadConstant(uint8_t index) {
 
 
 void Chunk::ClearConstants() {
+	// free memory for ObjectValue constants
 	for (int i = 0; i < this->constants.size(); i++) {
 		try {
 			if (this->constants[i].GetType() == Value::OBJECT_T) {
@@ -104,12 +105,16 @@ void Chunk::ClearConstants() {
 			}
 		}
 		catch (const std::exception& e) {
+			constants[i].SetValue(nullptr);
 			continue;
 		}
 	}
 }
 
 short Chunk::FindRunnable(Token& identifier) {
+	// return the index in the constants table 
+	// of the runnable who's name is equal to identifier Token
+
 	std::string name = identifier.GetLexeme();
 	for (int i = 0; i < this->constants.size(); i++) {
 		if (constants[i].GetType() == Value::OBJECT_T) {
@@ -145,7 +150,7 @@ std::vector<uint8_t>& Chunk::GetCode() {
 
 bool Chunk::IsAtEnd() {
 	short i = this->code.size() - 1;  // vector.size() returns an unsigned type 
-				//so it must be converted to a signed type to prevent integer overflow
+				//so it must be converted to a signed type in case the size is 0
 	return this->ip > i; 
 }
 
@@ -155,6 +160,8 @@ int Chunk::CountLines(bool CompileTime) {
 	short op = 0;
 
 	short limit = (CompileTime ? this->code.size(): this->ip);
+	// For compile-time errors, we will need the end of the chunk
+	// For runtime errors, we will need the current ip								
 
 	while (op < limit) {
 		switch (this->code[op]) {
@@ -213,6 +220,9 @@ int Chunk::CountLines(bool CompileTime) {
 }
 
 int Chunk::CountLines(std::string& RunnableName) {
+	// Find line number in which the runnable is declared
+	// Helpful for reporting line numbers in errors in functions
+
 	int line = 1;
 	short op = 0;
 
@@ -291,6 +301,9 @@ void Chunk::MoveIp(short distance) {
 }
 
 void Chunk::PatchJump(short JumpIndex, short distance) {
+	// JumpIndex is the second byte of the jump command's operand
+	// Function will patch the jump distance as 'distance'
+
 	this->code[JumpIndex - 1] = (uint8_t)((distance >> 8) & 0xFF);
 	this->code[JumpIndex] = (uint8_t)(distance & 0xFF);
 }

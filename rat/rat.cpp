@@ -4,7 +4,7 @@
 #include <sstream>
 #include <thread>
 
-#define DEBUG_PRINT_CODE
+//#define DEBUG_PRINT_CODE
 
 #include "rat.h"
 #include "Scanner.h"
@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
 
 
 void RunScript(char *filename) {
+    // Run a Hotrat script
+
     std::string buffer;
     std::ifstream Script(filename);
     int code = 0;
@@ -50,6 +52,8 @@ void RunScript(char *filename) {
 }
 
 void RunPrompt() {
+    // Run a Hotrat prompt
+
     std::string buffer;
 
     while (true) {

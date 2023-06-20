@@ -8,19 +8,6 @@ Debugger::Debugger(Chunk *chunk, std::string name){
 	ChunkName = name;
 	code = chunk->GetCode();
 
-	std::vector<Value>& constants = chunk->GetConstants();
-	for (int i = 0; i < constants.size(); i++) {
-		if (constants[i].IsObject()) {
-			ObjectValue* o = constants[i].GetObjectValue();
-
-			if (o->IsRunnable()) {
-				RunnableValue* r = (RunnableValue*)o;
-				Debugger d = Debugger(r->GetChunk(), r->ToString());
-				d.DisassembleChunk();
-			}
-		}
-	}
-
 	offset = 0;
 }
 
@@ -28,6 +15,7 @@ Debugger::~Debugger() {
 }
 
 void Debugger::ConstantOperation(const std::string& name) {
+	// Print an opcode with one operand, an index in the chunk's constants table
 	uint8_t constant = code[offset + 1];
 
 	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left << std::to_string(constant) << "\n";
@@ -36,11 +24,13 @@ void Debugger::ConstantOperation(const std::string& name) {
 }
 
 void Debugger::SimpleOperation(const std::string& name) {
+	// Print a opcode with no operands
 	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << "\t\n";
 	offset++;
 }
 
 void Debugger::JumpOperation(const std::string& name) {
+	// Print a jump opcode. Highlight the start and end points of the jump.
 	short distance = (short)((code[offset + 1] << 8));
 	distance += (short)(code[offset + 2] & 0xFF);
 
@@ -53,6 +43,8 @@ void Debugger::JumpOperation(const std::string& name) {
 
 
 void Debugger::CallOperation(const std::string& name) {
+	// Print the opcode to call a native runnable. The opcode has special operands.
+
 	uint8_t index = code[offset + 1];
 	uint8_t arity = code[offset + 2];
 
@@ -64,6 +56,7 @@ void Debugger::CallOperation(const std::string& name) {
 
 
 void Debugger::RunnableDefinition(const std::string& name) {
+	// Print the opcode to define a user-defined runnable. The opcode has special operands.
 	uint8_t index = code[offset + 1];
 	uint8_t lines = code[offset + 2];
 
@@ -82,6 +75,19 @@ void Debugger::DisassembleChunk() {
 
 	while (offset < code.size()) {
 		DisassembleInstruction();
+	}
+
+	std::vector<Value>& constants = chunk->GetConstants();
+	for (int i = 0; i < constants.size(); i++) {
+		if (constants[i].IsObject()) {
+			ObjectValue* o = constants[i].GetObjectValue();
+
+			if (o->IsRunnable()) {
+				RunnableValue* r = (RunnableValue*)o;
+				Debugger d = Debugger(r->GetChunk(), r->ToString());
+				d.DisassembleChunk();
+			}
+		}
 	}
 	std::cout << "\n\n\n";
 }

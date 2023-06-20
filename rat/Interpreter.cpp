@@ -19,6 +19,7 @@ Value Interpreter::NewObject(std::string& s) {
 }
 
 Value Interpreter::NewObject(ObjectValue* o) {
+	// Create a new object and at it to the linked list
 
 	Value v = Value(o);
 	ObjectValue* obj = v.GetObjectValue();
@@ -30,6 +31,7 @@ Value Interpreter::NewObject(ObjectValue* o) {
 
 
 Value NewValue() {
+	// 'none' value
 	return Value();
 }
 
@@ -61,6 +63,8 @@ bool IsIntegerValue(Value& f) {
 
 
 void Interpreter::NativeInput() {
+	// Code for native runnable, to get input as string
+
 	Value PreInput = peek(0);
 	std::string errormsg = "Argument to 'input' must be a string";
 	StrValue * s = ExtractStrValue(&PreInput, errormsg);
@@ -75,6 +79,8 @@ void Interpreter::NativeInput() {
 }
 
 void Interpreter::NativePrint() {
+	// Code for native runnable, to print a value to the screen.
+
 	Value v = peek(0);
 	std::cout << v.ToString() + "\n";
 	pop();  // remove reference to v
@@ -84,9 +90,9 @@ void Interpreter::NativePrint() {
 }
 
 void Interpreter::NativeReadFromFile() {
-	// reads entire file and returns a strvalue
+	// Code for native runnable that reads an entire file and returns a strvalue
 
-	Value v = peek(0);
+	Value v = peek(0);  // Keep value in stack so it still has at least one reference
 
 	std::string msg = "Argument to 'ReadFromFile' must be a valid path string";
 	std::string FileName = ExtractStrValue(&v, msg)->ToString();
@@ -103,7 +109,7 @@ void Interpreter::NativeReadFromFile() {
 	char* buff = new char[toread + 1];
 
 	bool success = ReadFile(handle, buff, toread, NULL, NULL);
-	if (success == FALSE) error(INTERNAL_ERROR, "Error reading the file");
+	if (success == FALSE) error(INTERNAL_ERROR, "Error reading the file " + FileName);
 	buff[toread] = 0;
 
 	std::string strbuf = std::string(buff);
@@ -120,15 +126,15 @@ void Interpreter::NativeReadFromFile() {
 }
 
 void Interpreter::NativeWriteToFile() {
-	// appends new text to end of file
+	// Code for native runnable that appends new text to end of file
 
-	Value BuffValue = peek(0);
+	Value BuffValue = peek(0);  // Keep value in stack so it still has at least one reference
 	std::string errormsg = "Arguments to 'WriteToFile' must be strings";
 
-	std::string buff = ExtractStrValue(&BuffValue, errormsg)->ToString();
+	std::string buff = ExtractStrValue(&BuffValue, errormsg)->ToString();  // Value to insert
 
 	Value FileValue = peek(1);
-	std::string filename = ExtractStrValue(&FileValue, errormsg)->ToString();
+	std::string filename = ExtractStrValue(&FileValue, errormsg)->ToString(); // File to insert to
 	LPCSTR CFileName = filename.c_str();
 
 	DWORD attribute = GetFileAttributesA(CFileName);
@@ -161,7 +167,9 @@ void Interpreter::NativeWriteToFile() {
 }
 
 void Interpreter::NativeEmptyFile() {
-	Value FileValue = peek(0);
+	// Code for native runnable that clears the contents of a file
+
+	Value FileValue = peek(0);  // Keep value in stack so it still has at least one reference
 
 	std::string msg = "EmptyFile's argument must be a string value";
 
@@ -188,55 +196,51 @@ void Interpreter::NativeEmptyFile() {
 }
 
 void Interpreter::NativeConvertToNum() {
-	Value v = peek(0);
+	// Code for a native function that converts a value to a Number
+
+	Value v = peek(0);  // Keep value in stack so it still has at least one reference
 	float num;
 	switch (v.GetType())
 	{
 		case Value::BOOL_T:  num = (v.GetBool() ? 1 : 0); break;
 		case Value::NUM_T:	 push(v);	return;
-		case Value::NONE_T:	 num = 0;   return;
+		case Value::NONE_T:	 num = 0;   break;
 
 		default: {
 			std::string errormsg = "Value given to 'Number()' must be of valid type";
 			StrValue* s = ExtractStrValue(&v, errormsg);
 
-			std::string str = s->ToString();
-			for (int i = 0; i < str.size(); i++) if (!isdigit(str[i])) error(TYPE_ERROR, "Input to Number(), if a string, must be a valid");
-
-			num = std::stof(s->ToString());
+			try {
+				num = std::stof(s->ToString());
+			}
+			catch (std::invalid_argument e) {
+				error(TYPE_ERROR, "Argument to " + globals["Number"].ToString() + " must be representable as a number");
+			}
 			break;
 		}
 	}
 
 	pop(); // remove reference to v
 
-	Value t = NewValue();
+	Value t = NewValue(num);
 	push(t);
 }
 
 void Interpreter::NativeConvertToBool() {
-	Value v = peek(0);
-	if (v.IsObject() && v.GetObjectValue()->IsString()) {
-		std::string m = "";
-		std::string s = ExtractStrValue(&v, m)->ToString();
+	// Code for native runnable that converts a value of any type to a bool.
 
-		if (s == "false") {
-			Value v = NewValue(false);
-
-			pop(); // remove reference to v
-			push(v);
-			return;
-		}
-	}
-
-	pop(); // remove reference to v
+	Value v = peek(0);  // Keep value in stack so it still has at least one reference
 
 	Value t = NewValue(v.IsTruthy());
+
+	pop(); // remove reference to v
 	push(t);
 }
 
 void Interpreter::NativeConvertToStr() {
-	Value v = peek(0);
+	// Code for native runnable that converts a value of any type to a string.
+
+	Value v = peek(0);  // Keep value in stack so it still has at least one reference
 
 	Value t = NewObject(v.ToString());
 	pop(); // remove reference to v
@@ -246,7 +250,9 @@ void Interpreter::NativeConvertToStr() {
 
 
 void Interpreter::NativeTypeOf() {
-	Value v = peek(0);
+	// Code for native runnable that prints the datatype of a value.
+
+	Value v = peek(0);  // Keep value in stack so it still has at least one reference
 
 	std::string s;
 	switch (v.GetType()) {
@@ -284,6 +290,8 @@ Interpreter::Interpreter(RunnableValue* body) {
 
 	globals = std::unordered_map<std::string, Value>();
 
+
+	// Define native functions
 	DefineNative("input",			1, &Interpreter::NativeInput);
 	DefineNative("print",			1, &Interpreter::NativePrint);
 	
@@ -299,7 +307,10 @@ Interpreter::Interpreter(RunnableValue* body) {
 
 Interpreter::~Interpreter() {
 	if (objects == nullptr) return;
+	
 	ObjectValue* v = objects;
+
+	// Free ObjectValues
 	while (v != nullptr) {
 		ObjectValue* next = v->GetNext();
 		delete v;
@@ -321,10 +332,14 @@ int Interpreter::interpret() {
 }
 
 void Interpreter::RunCommand() {
+	// Run a single command
+
 #ifdef DEBUG_TRACE_STACK
 	int offset = CurrentChunk()->GetOffset();
 #endif // DEBUG_TRACE_STACK
 
+
+// Arithmetic operations + - * / on numbers
 #define BINARY_NUM_OP(op)  {\
 	Value b = peek(0); \
 	Value a = peek(1); \
@@ -341,6 +356,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
+
+// Comparison operations == != <= >= < > on numbers
 #define BINARY_COMP_OP(op) {\
 	Value b = peek(0); \
 	Value a = peek(1); \
@@ -357,6 +374,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
+
+// Bitwise operations & | ^ >> << on integer values
 #define BINARY_BIT_OP(op) {\
 	Value b = peek(0); \
 	Value a = peek(1); \
@@ -374,6 +393,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
+
+// Variable assignment operations on numbers	+= -= *= /= 
 #define BINARY_ASSIGN_OP(a, op, IsPlus) {\
 \
 	Value b = peek(0); \
@@ -390,6 +411,8 @@ void Interpreter::RunCommand() {
 	}\
 }
 
+
+// Variable assignment operations on integer values &= |= ^\ >>= <<=
 #define BINARY_BIT_ASSIGN_OP(a, op) {\
 \
 	Value b = peek(0); \
@@ -563,6 +586,7 @@ void Interpreter::RunCommand() {
 						
 					}
 					else {
+						// If type and string are equal, so are the values
 						IsEqual = NewValue((o1->ToString() == o2->ToString()) && (o1->GetType() == o2->GetType()));
 					}
 
@@ -577,7 +601,7 @@ void Interpreter::RunCommand() {
 		case OP_GREATER:	BINARY_COMP_OP(>); break;
 
 		case OP_DEFINE_GLOBAL: {
-			uint8_t IdIndex = CurrentChunk()->advance();
+			uint8_t IdIndex = CurrentChunk()->advance(); // Index of identifier in constants table
 
 			std::string identifier = GetConstantStr(IdIndex);
 
@@ -597,7 +621,7 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_SET_GLOBAL: {
-			uint8_t IdIndex = CurrentChunk()->advance();
+			uint8_t IdIndex = CurrentChunk()->advance();  // Index of identifier in constants table
 			std::string identifier = GetConstantStr(IdIndex);
 
 			Value v = peek(0); // want to keep value on the stack in case the assignment is part of an expression
@@ -610,6 +634,7 @@ void Interpreter::RunCommand() {
 				if (o->GetType() == ObjectValue::RUNNABLE_T) error(TYPE_ERROR, "Can't reassign a runnable");
 				else if (o->GetType() == ObjectValue::NATIVE_T) error(TYPE_ERROR, "Can't set a value to a native runnable");
 
+				// Remove reference
 				bool deleted = o->DeleteReference();
 				if (deleted) {
 					RemoveObject(o);
@@ -644,6 +669,8 @@ void Interpreter::RunCommand() {
 
 			Value v = this->stack.stk[this->body->GetFrameStart() + FrameSlot + 1];
 			if (v.IsObject()) {
+
+				// Remove reference
 				bool deleted = v.GetObjectValue()->DeleteReference();
 				if (deleted) {
 					RemoveObject(v.GetObjectValue());
@@ -724,7 +751,10 @@ void Interpreter::RunCommand() {
 						StrValue* b = ExtractStrValue(&v, ErrorMsg);
 						StrValue* a = ExtractStrValue(FindGlobal(), ErrorMsg);
 
-						a->SetValue((std::string&)(*a + *b));
+						a->SetValue((std::string&)(*a + *b)); // no need to change references to a,
+						//the ObjectValue is the same
+						
+						
 						pop(); // delete reference to v
 						
 						Value v2 = NewObject(a);
@@ -754,7 +784,8 @@ void Interpreter::RunCommand() {
 					Value* va = FindLocal();
 					StrValue* a = ExtractStrValue(va, msg);
 
-					a->SetValue((std::string&)(*a + *b));
+					a->SetValue((std::string&)(*a + *b)); // no need to change references to a,
+					//the ObjectValue is the same
 					
 					va->SetValue(a);
 
@@ -927,6 +958,7 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_END_REPEAT: {
+			// Decrease repeat operand by 1 and loop back (or not)
 			Value v = pop();
 			if (!IsIntegerValue(v)) error(INTERNAL_ERROR, "");
 
@@ -945,8 +977,9 @@ void Interpreter::RunCommand() {
 		}
 
 		case OP_DEFINE_RUNNABLE: {
-			uint8_t index = CurrentChunk()->advance();
-			uint8_t linesnum = CurrentChunk()->advance();  
+			uint8_t index = CurrentChunk()->advance();		// Index of runnable identifier in constants table
+
+			uint8_t linesnum = CurrentChunk()->advance();   // Number of lines in the runnable
 			//linesnum can be discarded for now- meant to be used only when reporting errors
 
 			Value v = CurrentChunk()->ReadConstant(index);
@@ -967,8 +1000,12 @@ void Interpreter::RunCommand() {
 
 			if (called->IsObject() && called->GetObjectValue()->IsRunnable()) {
 				RunnableValue* runnable = ((RunnableValue*)called->GetObjectValue());
-				uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1; // current capacity, minus arguments and identifier
 
+				uint8_t FrameIndex = this->stack.count - runnable->GetArity() - 1;
+				// current capacity, minus arguments and identifier
+
+
+				// Copy the runnable, don't invoke it directly. This way, recursion is allowed
 				Chunk* c = new Chunk(runnable->GetChunk());
 				RunnableValue* NewBody = new RunnableValue(runnable, c, this->body, FrameIndex);
 
@@ -987,20 +1024,23 @@ void Interpreter::RunCommand() {
 			if (called->IsObject() && called->GetObjectValue()->IsNative()) {
 				NativeValue* nv = (NativeValue *)called->GetObjectValue();
 				if (arity != nv->GetArity()) {
-					error(TYPE_ERROR, "Native called with " +
+					error(TYPE_ERROR, nv->ToString() + " called with " +
 						std::to_string(arity) + " arguments, but accepts " + std::to_string(nv->GetArity()));
 				}
 				NativeRunnable n = nv->GetRunnable();
-				(this->*n)();
+				(this->*n)(); // Call native runnable
 			}
 			else {
 				error(TYPE_ERROR, "Can't call an object that isn't a runnable");
 			}
 
-			if (peek(0).IsObject()) peek(0).GetObjectValue()->AddReference(); // so it doesn't get deleted when popping before call frame
+			if (peek(0).IsObject()) peek(0).GetObjectValue()->AddReference(); 
+			// so it doesn't get deleted when popping before call frame
+			
 			Value ReturnValue = pop();
 
 			pop(); // remove runnable from stack
+			
 			push(ReturnValue);
 			if (ReturnValue.IsObject()) peek(0).GetObjectValue()->DeleteReference();
 
@@ -1009,7 +1049,9 @@ void Interpreter::RunCommand() {
 
 		case OP_RETURN: {
 			if (peek(0).IsObject()) {
-				peek(0).GetObjectValue()->AddReference(); // so it won't be deleted when popped before frame
+				peek(0).GetObjectValue()->AddReference(); 
+				// Add reference to the return value so it won't get deleted now
+				// when it will be popped before the call frame
 			}
 			Value ReturnVal = pop();
 
@@ -1017,7 +1059,10 @@ void Interpreter::RunCommand() {
 				pop();  // pop frame off the stack
 			}
 
-			push(ReturnVal);
+			push(ReturnVal); // Push return value back on the stack so it will be available for use
+			
+			if (ReturnVal.IsObject()) ReturnVal.GetObjectValue()->DeleteReference();
+			// Delete reference that was added earlier
 
 			SetBody(this->body->GetEnclosing());
 
@@ -1047,6 +1092,7 @@ void Interpreter::SetBody(RunnableValue* body) {
 
 
 Value& Interpreter::pop() {
+	// Pop value from the vm stack
 	if (this->stack.count <= 0) {
 		error(STACK_UNDERFLOW, "Popping from empty stack");
 	}
@@ -1056,6 +1102,7 @@ Value& Interpreter::pop() {
 	Value i = stack.stk[stack.count];
 
 	if (i.IsObject()) {
+		// Delete reference to object
 		bool deleted = i.GetObjectValue()->DeleteReference();
 		if (deleted) {
 			RemoveObject(i.GetObjectValue());
@@ -1067,6 +1114,7 @@ Value& Interpreter::pop() {
 }
 
 void Interpreter::RemoveObject(ObjectValue* o) {
+	// Remove the object form the linked list and free it's memory
 	if (o == nullptr) return;
 
 	if (this->objects == o) {
@@ -1098,6 +1146,7 @@ void Interpreter::RemoveObject(ObjectValue* o) {
 
 
 void Interpreter::push(Value& value) {
+	// Push a value to the vm stack
 	if (stack.count == StackSize) error(STACK_OVERFLOW, "Stack limit exceeded");
 	stack.stk[stack.count++] = value;
 
@@ -1116,6 +1165,9 @@ Value& Interpreter::peek(int depth) {
 
 
 StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
+	// Return the StrValue that v holds, if it does.
+	// If v is not a StrValue, raise an error
+
 	if (v->GetType() != Value::OBJECT_T) error(TYPE_ERROR, ErrorMsg);
 
 	ObjectValue* o = v->GetObjectValue();
@@ -1127,17 +1179,21 @@ StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
 
 
 std::string Interpreter::GetConstantStr(uint8_t index) {
+	// Get the string at index 'index' in the chunks constants table
+
 	Value v = CurrentChunk()->ReadConstant(index);
 	StrValue* s = (StrValue *)v.GetObjectValue();
 	return s->GetValue();
 }
 
 bool Interpreter::GetConstantBool(uint8_t index) {
+	// Get the boolean at index 'index' in the chunks constants table
 	Value v = CurrentChunk()->ReadConstant(index);
 	return v.GetBool();
 }
 
 float Interpreter::GetConstantNum(uint8_t index) {
+	// Get the number at index 'index' in the chunks constants table
 	Value v = CurrentChunk()->ReadConstant(index);
 	return v.GetNum();
 }
@@ -1170,6 +1226,8 @@ bool Interpreter::IsDefinedGlobal(std::string& identifier ) {
 
 
 std::string Interpreter::TraceStack(int CodeOffset) {
+	// Print the stack contents to the screen
+	
 	std::string trace = "";
 	for (uint8_t i = 0; i < this->stack.count; i++) {
 		trace += ("[ " + this->stack.stk[i].ToString() + " ]\t");

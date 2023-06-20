@@ -1,12 +1,14 @@
 #include "Value.h"
 
 Value::Value() {
+	// 'none' value
 
 	this->type = NONE_T; // temporary value, will be set by the actual type's initializer
 	this->StrRep = "None";
 }
 
 Value::Value(float f) {
+	// Number value
 	this->val.n = f;
 	this->type = NUM_T;
 
@@ -17,6 +19,7 @@ Value::Value(float f) {
 
 
 Value::Value(bool b) {
+	// Boolean value
 	this->val.b = b;
 	this->type = BOOL_T;
 
@@ -25,6 +28,7 @@ Value::Value(bool b) {
 }
 
 Value::Value(ObjectValue* o) {
+	// ObjectValue Value
 	this->val.o = o;
 	this->type = OBJECT_T;
 
@@ -103,6 +107,8 @@ std::string& Value::ToString() {
 }
 
 bool Value::IsTruthy() {
+	// If a value is truthy, it is equivalent to the value 'true' when read as a boolean.
+	// Otherwise, it is falsey, meaning it is equivalent to the value 'false' when read as a boolean.
 	switch (this->type)
 	{
 		case NUM_T:			return  this->GetNum() != 0;		break;
@@ -111,7 +117,7 @@ bool Value::IsTruthy() {
 			ObjectValue* o = this->val.o;
 			switch (o->GetType())
 			{
-				case ObjectValue::STRING_T:		return ((StrValue*)o)->GetValue() != "";		break;
+				case ObjectValue::STRING_T:		return o->ToString() != "" && o->ToString() != "false";		break;
 				case ObjectValue::RUNNABLE_T:	return true;
 				case ObjectValue::NATIVE_T:		return true;
 				default:
@@ -123,6 +129,11 @@ bool Value::IsTruthy() {
 
 		default:	return false;
 	}
+}
+
+ObjectValue::ObjectValue() {
+	this->references = 0;
+	this->next = nullptr;
 }
 
 ObjectValue::ObjectType ObjectValue::GetType() {
@@ -169,8 +180,6 @@ bool ObjectValue::DeleteReference() {
 StrValue::StrValue(std::string& value) {
 	this->type = STRING_T;
 	this->StrRep = value;
-	
-	this->references = 0;
 }
 
 std::string& StrValue::GetValue() {
@@ -191,11 +200,12 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string&
 	this->StrRep = name;
 	this->arity = arity;
 
-	this->references = 1;
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name) {
+RunnableValue::RunnableValue(struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name) {
+	// Constructor for use during compile-time. Bytecode, args and name are all known at compile time.
+	
 	this->ByteCode = ByteCode;
 
 	this->name = name;
@@ -203,13 +213,9 @@ RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, s
 	
 	this->arity = args.size();
 
-	this->enclosing = enclosing;
-
 	for (int i = 0; i < args.size(); i++) this->locals.push_back(args[i]);
 	
 	this->FrameStart = 0; // temp value
-
-	this->references = 1;
 	this->type = RUNNABLE_T;
 }
 
@@ -225,7 +231,6 @@ RunnableValue::RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue 
 
 	this->FrameStart = FrameStart;
 
-	this->references = 1;
 	this->enclosing = enclosing;
 }
 
@@ -279,7 +284,6 @@ NativeValue::NativeValue(std::string& name, uint8_t arity, NativeRunnable runnab
 	this->arity = arity;
 	this->runnable = runnable;
 
-	this->references = 1;
 	this->StrRep = "<Native runnable '" + name + "'>";
 }
 

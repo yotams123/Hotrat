@@ -14,6 +14,8 @@ Scanner::Scanner(std::string src) {
 Scanner::~Scanner(){}
 
 std::vector<Token>& Scanner::ScanTokens() {
+	// Create the vector of tokens
+
 	Token token = Token(TOKEN_EOF, ""); // placeholder value
 	do { 
 		token = ScanToken();
@@ -27,6 +29,8 @@ std::vector<Token>& Scanner::ScanTokens() {
 }
 
 Token Scanner::ScanToken() {
+	// Scan a single token
+
 	SkipWhiteSpace();
 
 	start = current; // start of token
@@ -212,6 +216,9 @@ Token Scanner::ScanToken() {
 }
 
 bool Scanner::CheckWord(std::string rest) {
+	// Returns 'true' if the continuance of src matches with parameter rest
+	// Doesn't advance current
+
 	for (int i = 0; i < rest.length(); i++) {
 		if (peek(i) != rest[i]) return false;
 	}
@@ -223,6 +230,7 @@ bool Scanner::CheckWord(std::string rest) {
 }
 
 Token Scanner::Number() {
+	// Lexes a number literal and returns an appropriate token
 	while (isdigit(peek(0))) { advance(); }
 	
 	if (peek(0) == '.') {
@@ -233,7 +241,9 @@ Token Scanner::Number() {
 }
 
 Token Scanner::String() {
-	int newline_toks = 0;
+	// Lexes a string literal and returns an appropriate token
+
+	int newline_toks = 0;  // number of newlines in the string
 	while (peek(0) != '"' && !IsAtEnd()) { 
 		if (peek(0) == '\n') {
 			newline_toks++;
@@ -263,19 +273,22 @@ Token Scanner::String() {
 }
 
 Token Scanner::Identifier() {
+	// Lexes and returns a identifier token
 	while (isalnum((uint8_t)peek(0)) || peek(0) == '_') { advance(); }
 	return Token(IDENTIFIER, src.substr(start, current - start));
 }
 
 Token Scanner::Comment() {
+	// Lexes a comment and discards
 	while (!(match('\n') || IsAtEnd())) advance();
 	if (IsAtEnd()) {
 		return Token(TOKEN_EOF, "");
 	}
-	return Token(HASH, "#"); // compiler will discard
+	return Token(TOKEN_NEWLINE, "\n"); // compiler will discard
 }
 
 void Scanner::SkipWhiteSpace() {
+	// Skip over spaces/tabs/newlines between tokens
 	while (true) {
 		start = current;
 		switch (peek(0)) {
@@ -301,6 +314,8 @@ char Scanner::peek(size_t distance) {
 }
 
 bool Scanner::MatchString(std::string target) {
+	// Match the string target with the continuation of src
+	// advances target if a match is confirmed
 	if (src.substr(current, target.length()) == target) {
 		for (int i = 0; i < target.length(); i++) advance();
 		return true;
@@ -310,6 +325,7 @@ bool Scanner::MatchString(std::string target) {
 }
 
 bool Scanner::match(char c) {
+	// Match a single character
 	if (peek(0) == c) {
 		advance();
 		return true;
@@ -323,6 +339,6 @@ bool Scanner::IsAtEnd() {
 
 
 void Scanner::error(std::string ErrorMsg) {
-	std::cerr << "[Error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
+	std::cerr << "[Lexer error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
 	HadError = true;
 }

@@ -69,6 +69,8 @@ protected:
 	int references;
 
 public:
+	ObjectValue();
+
 	ObjectType GetType();
 	std::string& ToString();
 	
@@ -108,7 +110,7 @@ protected:
 
 public:
 	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string& name);
-	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name);	// for use during compile time
+	RunnableValue(struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name);	// for use during compile time
 	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart);	// for use during the runtime
 	~RunnableValue();
 

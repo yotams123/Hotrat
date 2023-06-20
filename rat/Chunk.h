@@ -27,7 +27,9 @@ typedef enum {
 	OP_BIT_AND,
 	OP_BIT_OR,
 	OP_BIT_XOR,
+
 	OP_NOT,
+	OP_NEGATE,
 
 	OP_EQUALS,
 	OP_GREATER,
@@ -73,7 +75,7 @@ typedef enum {
 	OP_JUMP,
 	OP_JUMP_IF_TRUE,
 	OP_JUMP_IF_FALSE,
-	OP_LOOP,
+	OP_LOOP, // jump back
 
 	OP_REPEAT, 
 	OP_END_REPEAT,
@@ -82,8 +84,6 @@ typedef enum {
 	OP_CALL,
 	OP_CALL_NATIVE,
 	OP_RETURN,
-
-	OP_NEGATE,
 } Opcode;
 
 typedef struct Chunk {

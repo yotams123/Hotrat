@@ -95,6 +95,10 @@ void Compiler::ErrorAtCurrent(int e, std::string msg) {
 
 void Compiler::error(int e, std::string msg, Token where) {
 	int line = CurrentChunk()->CountLines(true);
+	if (CurrentBody->GetEnclosing() != nullptr) {
+		line += CurrentBody->GetEnclosing()->GetChunk()->CountLines(true);
+	}
+
 	std::string lexeme =  "'" + where.GetLexeme() + "'";
 	if (lexeme == "'\n'") lexeme = "end of line";
 
@@ -104,6 +108,8 @@ void Compiler::error(int e, std::string msg, Token where) {
 }
 
 void Compiler::synchronize() {
+	// After error, compiler is disoriented - doesn't know where it is.
+	// Synchronize helps it resync and continue
 	while (!match(TOKEN_EOF) && !match(TOKEN_NEWLINE)) {
 		advance();
 	}
@@ -111,6 +117,7 @@ void Compiler::synchronize() {
 }
 
 void Compiler::literal(bool CanAssign) {
+	// Function to handle the 'literal' rule in Hotrat's grammar
 	TokenType type = CurrentToken().GetType();
 
 	switch (type)
@@ -136,6 +143,7 @@ void Compiler::literal(bool CanAssign) {
 
 
 uint8_t Compiler::block() {
+	// Function to handle the 'block' rule in Hotrat's grammar
 	while (true) {
 		while (match(TOKEN_NEWLINE)) literal(true);
 		Token tok = CurrentToken();
@@ -172,7 +180,14 @@ uint8_t Compiler::block() {
 				ErrorAtCurrent(BLOCKED_RUNNABLE, "Can't define a runnable inside a block");
 
 			default:
-				declaration(true);
+				try {
+					declaration(true);
+				}
+				catch (int e) {
+					if (e >= 100 && e <= 199) { // e is in range for compiler error codes
+						synchronize();
+					}
+				}
 		}
 	}
 }
@@ -359,6 +374,7 @@ void Compiler::call(bool CanAssign) {
 
 
 void Compiler::unary(bool CanAssign) {
+	// Function to handle the 'unary' rule of Hotrat's grammar
 	Token op = advance();
 
 	ParsePrecedence(PREC_UNARY);
@@ -373,6 +389,7 @@ void Compiler::unary(bool CanAssign) {
 }
 
 void Compiler::binary(bool CanAssign) {
+	// Function to handle binary operators:	+-	 */		 &|, ...
 	Token op = advance();
 
 	short ConditionJump = -1;
@@ -386,7 +403,7 @@ void Compiler::binary(bool CanAssign) {
 	ParseRule rule = GetRule(op.GetType());
 	Precedence ToParse = (Precedence)(rule.precedence + 1);
 
-	ParsePrecedence(ToParse);
+	ParsePrecedence(ToParse); // Evaluate right expression
 	switch (op.GetType())
 	{
 		case PLUS:			EmitByte(OP_ADD);			break;
@@ -429,6 +446,7 @@ void Compiler::expression(bool CanAssign){
 }
 
 void Compiler::declaration(bool CanAssign) {
+	// Function to handle the 'declaration' rule of Hotrat's grammar
 	Token kw = CurrentToken();
 	switch (kw.GetType()) {
 		case RAT: {
@@ -448,6 +466,8 @@ void Compiler::declaration(bool CanAssign) {
 }
 
 void Compiler::statement(bool CanAssign) {
+	// Function to handle the 'statement' rule of Hotrat's grammar
+	
 	Token kw = CurrentToken();
 
 	switch (kw.GetType()) {
@@ -475,6 +495,8 @@ void Compiler::statement(bool CanAssign) {
 
 
 void Compiler::ExpressionStatement() {
+	// Function for expression statements - expressions that behave as statements
+
 	expression(true);  // 'expression' will always allow assignment, regardless of parameter
 	if (!match(TOKEN_EOF)) {
 		consume(TOKEN_NEWLINE, "expected '\\n' after expression");
@@ -486,6 +508,8 @@ void Compiler::ExpressionStatement() {
 }
 
 void Compiler::VarDeclaration() {
+	// Declaration of a variable
+
 	Token identifier = advance();
 	if (identifier.GetType() != IDENTIFIER) {
 		ErrorAtPrevious(UNEXPECTED_TOKEN, "Expected identifier after 'rat' keyword");
@@ -517,8 +541,8 @@ void Compiler::VarDeclaration() {
 void Compiler::IfStatement() {
 	expression(true);	// the condition for the block
 	consume(COLON, "Expected ':' after expression");
-	short SkipIf = EmitJump(OP_JUMP_IF_FALSE);
-	short SkipElse = 0;
+	short SkipIf = EmitJump(OP_JUMP_IF_FALSE);  // Jump over 'if' branch
+	short SkipElse = 0; // Jump over 'else' branch
 
 	uint8_t BlockCode = block();
 	switch (BlockCode)
@@ -536,8 +560,7 @@ void Compiler::IfStatement() {
 		SkipElse = EmitJump(OP_JUMP);
 		advance();
 
-		PatchJump(SkipIf);
-		EmitByte(OP_POP);  // pop the condition off the stack
+		PatchJump(SkipIf);  // Skipping over the 'if' branch will land here
 
 		BlockCode = block();
 		switch (BlockCode)
@@ -554,17 +577,17 @@ void Compiler::IfStatement() {
 
 	advance();
 	SkipElse == 0 ? PatchJump(SkipIf) : PatchJump(SkipElse); // end of if block
-	EmitByte(OP_POP); // pop the condition off the stack
+	EmitByte(OP_POP); // pop the condition result off the stack
 	return;
 }
 
 
 void Compiler::WhileStatement() {
-	short Loopstart = CurrentChunk()->GetSize() - 1;
+	short Loopstart = CurrentChunk()->GetSize() - 1; // start of loop
 	expression(true);  // loop condition
 	consume(COLON, "expected ':' after expression");
 
-	short BreakLoop = EmitJump(OP_JUMP_IF_FALSE);
+	short BreakLoop = EmitJump(OP_JUMP_IF_FALSE); 
 
 	uint8_t BlockCode = block();
 	switch (BlockCode) {
@@ -575,8 +598,8 @@ void Compiler::WhileStatement() {
 		default:	ErrorAtCurrent(UNEXPECTED_TOKEN, "expected 'endwhile'");
 	}
 	
-	PatchLoop(Loopstart);
-	PatchJump(BreakLoop);
+	PatchLoop(Loopstart); // Jump to start of loop
+	PatchJump(BreakLoop); // Set so the breaking of the loop will land here
 }
 
 
@@ -586,7 +609,7 @@ void Compiler::RepeatStatement() {
 
 	EmitByte(OP_REPEAT);
 
-	short Loopstart = CurrentChunk()->GetSize() - 1;
+	short Loopstart = CurrentChunk()->GetSize() - 1; // Start of loop
 
 	uint8_t BlockCode = block();
 	switch (BlockCode) {
@@ -613,7 +636,7 @@ void Compiler::RunnableDeclaration() {
 	consume(COLON, "Expected ':' after function declaration");
 	consume(TOKEN_NEWLINE, "Expected newline after function declaration");
 
-	CurrentBody = new RunnableValue(CurrentBody, new Chunk, args, identifier.GetLexeme());
+	CurrentBody = new RunnableValue(new Chunk, args, identifier.GetLexeme());
 	this->ct = COMPILE_RUNNABLE;
 
 	uint8_t BlockCode = block();
@@ -642,11 +665,18 @@ void Compiler::RunnableDeclaration() {
 
 
 uint8_t Compiler::ArgumentList() {
+	// Parse the argument list that is part of a runnable call and return number of args given
+
 	uint8_t ArgCount = 0;
 	while (!match(RIGHT_PAREN) && !match(TOKEN_EOF)) {
 		expression(true);
 		ArgCount++;
-		if (match(COMMA)) advance();
+		if (match(COMMA)) {
+			advance();
+		}
+		else {
+			break;
+		}
 	}
 
 	consume(RIGHT_PAREN, "Expected ')' after argument list");
@@ -655,6 +685,7 @@ uint8_t Compiler::ArgumentList() {
 }
 
 std::vector<std::string> Compiler::ParameterList() {
+	// Parse list of parameters as part of a runnable definition, and return a vector of their names.
 	std::vector<std::string> args;
 	
 	Token name = peek(-2);
@@ -719,6 +750,9 @@ Compiler::ParseRule& Compiler::GetRule(TokenType type) {
 }
 
 void Compiler::ParsePrecedence(Precedence precedence) {
+	// Function at the heart of Vaughan Pratt's recursive top-down parsing algorithm.
+	// In constant exchange with the RuleTable and with the functions for each rule. 
+
 	ParseRule rule = GetRule(CurrentToken().GetType());  // get relevant rule (line from table)
 	ParseFunction PrefixRule = rule.prefix;				 // get relevant prefix function
 
@@ -806,6 +840,9 @@ short Compiler::EmitJump(Opcode JumpInstruction) {
 }
 
 void Compiler::PatchJump(short JumpIndex) {
+	// Get the index of the jump instruction
+	// Fill it so execution will jump here
+
 	short CurrentIndex = CurrentChunk()->GetSize() - 1;
 	if (CurrentIndex < JumpIndex) ErrorAtCurrent(INTERNAL_ERROR, "");
 
@@ -813,6 +850,8 @@ void Compiler::PatchJump(short JumpIndex) {
 }
 
 void Compiler::PatchLoop(short LoopStart) {
+	// Emit bytes to jump back to LoopStart
+
 	EmitByte(OP_LOOP);
 	EmitBytes(0, 0);
 

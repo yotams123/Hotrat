@@ -14,7 +14,6 @@ enum TokenType {
 	LEFT_BRACKET, RIGHT_BRACKET,
 	LEFT_BRACE, RIGHT_BRACE,
 
-	HASH,
 	COLON,
 
 	// loops and conditions
