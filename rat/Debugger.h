@@ -14,20 +14,24 @@ private:
 	std::string ChunkName;
 	std::vector<uint8_t> code;
 
+	std::vector<std::pair<int, int>> runnables;
 	int line;
 	std::string PrintLineNum;
 
 	void ConstantOperation(const std::string& name);
 	void SimpleOperation(const std::string& name);
 	void JumpOperation(const std::string& name);
-	void CallOperation(const std::string& name);
+	void CallNativeOperation(const std::string& name);
 	void RunnableDefinition(const std::string& name);
 	
 	void DisassembleInstruction();
+
+	void DisassembleRunnable(RunnableValue* runnable, int line);
 
 public:
 	Debugger(Chunk *, std::string);
 	~Debugger();
 
-	void DisassembleChunk();
+	void DisassembleScript();
+
 };

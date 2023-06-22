@@ -42,7 +42,7 @@ void Debugger::JumpOperation(const std::string& name) {
 }
 
 
-void Debugger::CallOperation(const std::string& name) {
+void Debugger::CallNativeOperation(const std::string& name) {
 	// Print the opcode to call a native runnable. The opcode has special operands.
 
 	uint8_t index = code[offset + 1];
@@ -57,17 +57,20 @@ void Debugger::CallOperation(const std::string& name) {
 
 void Debugger::RunnableDefinition(const std::string& name) {
 	// Print the opcode to define a user-defined runnable. The opcode has special operands.
-	uint8_t index = code[offset + 1];
+
+	std::string& rname = chunk->ReadConstant(code[offset + 1]).GetObjectValue()->ToString();
 	uint8_t lines = code[offset + 2];
 
 	std::cout << std::setw(OPCODE_NAME_LEN) << std::left << name << std::setw(4) << std::left <<
-		std::to_string(index) << " linecount = " << std::to_string(lines) << "\n";
+		rname << " \t\tlinecount = " << std::to_string(lines) << "\n";
+
+	this->runnables.push_back({code[offset + 1], line + 1});
 
 	this->line += lines - 1;
 	offset += 3;
 }
 
-void Debugger::DisassembleChunk() {
+void Debugger::DisassembleScript() {
 	line = 1;
 	PrintLineNum = "1";
 
@@ -77,18 +80,31 @@ void Debugger::DisassembleChunk() {
 		DisassembleInstruction();
 	}
 
-	std::vector<Value>& constants = chunk->GetConstants();
-	for (int i = 0; i < constants.size(); i++) {
-		if (constants[i].IsObject()) {
-			ObjectValue* o = constants[i].GetObjectValue();
-
-			if (o->IsRunnable()) {
-				RunnableValue* r = (RunnableValue*)o;
-				Debugger d = Debugger(r->GetChunk(), r->ToString());
-				d.DisassembleChunk();
-			}
-		}
+	for (int i = 0; i < runnables.size(); i++) {
+		int index = std::get<0>(runnables[i]);
+		int LineOffset = std::get<1>(runnables[i]);
+		RunnableValue* rv = (RunnableValue *)(chunk->ReadConstant(index).GetObjectValue());
+		DisassembleRunnable(rv, LineOffset);
 	}
+	std::cout << "\n\n\n";
+}
+
+
+void Debugger::DisassembleRunnable(RunnableValue *runnable, int LineOffset) {
+	line = LineOffset;
+	PrintLineNum = std::to_string(LineOffset);
+
+	this->ChunkName = runnable->GetName();
+	std::cout << "\n\n\n==" << ChunkName << "==\n";
+
+	this->offset = 0;
+	this->chunk = runnable->GetChunk();
+	this->code = this->chunk->GetCode();
+
+	while (this->offset < this->chunk->GetSize()) {
+		DisassembleInstruction();
+	}
+
 	std::cout << "\n\n\n";
 }
 
@@ -180,7 +196,7 @@ void Debugger::DisassembleInstruction() {
 		case OP_CALL:				ConstantOperation("OP_CALL");				break;
 		case OP_RETURN:				SimpleOperation("OP_RETURN");				break;
 
-		case OP_CALL_NATIVE:		CallOperation("OP_CALL_NATIVE");				break;
+		case OP_CALL_NATIVE:		CallNativeOperation("OP_CALL_NATIVE");				break;
 
 		default: {
 			std::cout << "Unrecognized instruction" << instruction << "\t\n";

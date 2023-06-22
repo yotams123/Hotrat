@@ -4,17 +4,8 @@
 #include <sstream>
 #include <thread>
 
-//#define DEBUG_PRINT_CODE
-
 #include "rat.h"
-#include "Scanner.h"
-#include "Token.h"
-#include "Compiler.h"
-#include "Interpreter.h"
 
-#ifdef DEBUG_PRINT_CODE 
-#include "Debugger.h"
-#endif
 
 int main(int argc, char *argv[])
 {
@@ -79,7 +70,7 @@ int Run(std::string& src) {
 #ifdef DEBUG_PRINT_CODE
     Debugger *debugger = new Debugger(script->GetChunk(), (std::string)"script");
     
-    std::thread DbgThread(&Debugger::DisassembleChunk, debugger);
+    std::thread DbgThread(&Debugger::DisassembleScript, debugger);
 #endif // DEBUG_PRINT_CODE
 
 

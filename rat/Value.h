@@ -141,4 +141,5 @@ public:
 
 	NativeRunnable GetRunnable();
 	uint8_t GetArity();
+	std::string& GetName();
 };

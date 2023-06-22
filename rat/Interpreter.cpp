@@ -109,7 +109,7 @@ void Interpreter::NativeReadFromFile() {
 	char* buff = new char[toread + 1];
 
 	bool success = ReadFile(handle, buff, toread, NULL, NULL);
-	if (success == FALSE) error(INTERNAL_ERROR, "Error reading the file " + FileName);
+	if (success == FALSE) error(INTERNAL_ERROR, "Error reading the file '" + FileName + "'");
 	buff[toread] = 0;
 
 	std::string strbuf = std::string(buff);
@@ -154,7 +154,7 @@ void Interpreter::NativeWriteToFile() {
 
 	bool success = WriteFile(handle, buff.c_str(), buff.size(), NULL, NULL);
 	if (!success) {
-		error(INTERNAL_ERROR, "Error writing to file");
+		error(INTERNAL_ERROR, "Error writing to file '" + filename + "'");
 	}
 
 	CloseHandle(handle);
@@ -184,7 +184,7 @@ void Interpreter::NativeEmptyFile() {
 	}
 
 	HANDLE handle = CreateFileA(filename.c_str(), GENERIC_WRITE, NULL, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (handle == 0) error(INTERNAL_ERROR, "There was an error opening the file '" + filename +
+	if (handle == 0) error(INTERNAL_ERROR, "There was an error emptying the file '" + filename +
 		"'.\n\tAre you sure the path is correct ? ");
 
 	CloseHandle(handle);

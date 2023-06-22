@@ -309,3 +309,7 @@ NativeRunnable NativeValue::GetRunnable() {
 uint8_t NativeValue::GetArity() {
 	return this->arity;
 }
+
+std::string& NativeValue::GetName() {
+	return this->name;
+}
