@@ -10,6 +10,7 @@ class Debugger
 {
 private:
 	Chunk *chunk;
+
 	int offset;
 	std::string ChunkName;
 	std::vector<uint8_t> code;
@@ -33,5 +34,4 @@ public:
 	~Debugger();
 
 	void DisassembleScript();
-
 };

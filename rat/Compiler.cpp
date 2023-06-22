@@ -340,8 +340,7 @@ void Compiler::call(bool CanAssign) {
 		if (RunnableIndex == -1) {
 			if (CurrentChunk()->IsNative(name)) {
 				native = true;
-			}
-			else {
+			} else {
 				ErrorAtPrevious(UNDEFINED_RUNNABLE, "Undefined runnable '" + name.GetLexeme() + "'\n");
 				// not native and not user-defined
 			}
@@ -558,7 +557,8 @@ void Compiler::IfStatement() {
 		consume(COLON, "Expected ':' after else");
 
 		SkipElse = EmitJump(OP_JUMP);
-		advance();
+		consume(TOKEN_NEWLINE, "Expected newline after colon");
+		EmitByte(OP_NEWLINE);
 
 		PatchJump(SkipIf);  // Skipping over the 'if' branch will land here
 
@@ -636,7 +636,11 @@ void Compiler::RunnableDeclaration() {
 	consume(COLON, "Expected ':' after function declaration");
 	consume(TOKEN_NEWLINE, "Expected newline after function declaration");
 
-	CurrentBody = new RunnableValue(CurrentBody, new Chunk, args, identifier.GetLexeme());
+	RunnableValue *rv = new RunnableValue(CurrentBody, new Chunk, args, identifier.GetLexeme());
+	Value v = Value(rv);
+	uint8_t index = SafeAddConstant(rv);
+
+	CurrentBody = rv;
 	this->ct = COMPILE_RUNNABLE;
 
 	uint8_t BlockCode = block();
@@ -650,13 +654,8 @@ void Compiler::RunnableDeclaration() {
 
 	advance();
 
-	RunnableValue* rv = CurrentBody;
-	Value v = Value(rv);
-
 	CurrentBody = CurrentBody->GetEnclosing();
 	this->ct = COMPILE_SCRIPT;
-
-	uint8_t index = SafeAddConstant(rv);
 
 	uint8_t lines = rv->GetChunk()->CountLines(true);
 	EmitBytes(OP_DEFINE_RUNNABLE, index);

@@ -4,7 +4,7 @@
 
 Debugger::Debugger(Chunk *chunk, std::string name){
 	this->chunk = chunk;
-	
+
 	ChunkName = name;
 	code = chunk->GetCode();
 
@@ -80,11 +80,15 @@ void Debugger::DisassembleScript() {
 		DisassembleInstruction();
 	}
 
-	for (int i = 0; i < runnables.size(); i++) {
+	Chunk* Script = this->chunk;
+
+	int rsize = runnables.size();
+	for (int i = 0; i < rsize; i++) {
 		int index = std::get<0>(runnables[i]);
 		int LineOffset = std::get<1>(runnables[i]);
 		RunnableValue* rv = (RunnableValue *)(chunk->ReadConstant(index).GetObjectValue());
 		DisassembleRunnable(rv, LineOffset);
+		this->chunk = Script;
 	}
 	std::cout << "\n\n\n";
 }
@@ -101,7 +105,8 @@ void Debugger::DisassembleRunnable(RunnableValue *runnable, int LineOffset) {
 	this->chunk = runnable->GetChunk();
 	this->code = this->chunk->GetCode();
 
-	while (this->offset < this->chunk->GetSize()) {
+	int ChunkSize = this->chunk->GetSize();
+	while (this->offset < ChunkSize) {
 		DisassembleInstruction();
 	}
 
@@ -112,7 +117,7 @@ void Debugger::DisassembleInstruction() {
 	std::cout << std::setw(4) << std::right << offset << "\t" << PrintLineNum << "\t";
 	PrintLineNum = "|";
 
-	Opcode instruction = (Opcode)code[offset];
+	Opcode instruction = (Opcode)(code[offset]);
 
 	switch (instruction) {
 		
