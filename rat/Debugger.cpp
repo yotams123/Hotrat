@@ -66,7 +66,7 @@ void Debugger::RunnableDefinition(const std::string& name) {
 
 	this->runnables.push_back({code[offset + 1], line + 1});
 
-	this->line += lines - 1;
+	this->line += lines;
 	offset += 3;
 }
 

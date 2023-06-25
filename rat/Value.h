@@ -7,7 +7,7 @@ class ObjectValue;
 
 class Value {
 public:
-	typedef enum {
+	typedef enum datatype{
 		NONE_T,
 		NUM_T,
 		BOOL_T,
@@ -55,7 +55,7 @@ public:
 
 class ObjectValue {
 public:
-	typedef enum {
+	typedef enum ObjectType{
 		STRING_T,
 		RUNNABLE_T,
 		NATIVE_T
@@ -109,7 +109,7 @@ protected:
 	uint8_t FrameStart; // index at which the frame starts
 
 public:
-	RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string& name);
+	RunnableValue(struct Chunk *ByteCode); // for initializing the script
 	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name);	// for use during compile time
 	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart);	// for use during the runtime
 	~RunnableValue();

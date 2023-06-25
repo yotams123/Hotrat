@@ -8,7 +8,7 @@
 #include <vector>
 #include <iostream>
 
-typedef enum {
+typedef enum Precedence{
 	PREC_END,
 	PREC_NONE,
 	PREC_ASSIGN,
@@ -37,7 +37,7 @@ private:
 	int CurrentTokenOffset;
 	bool HadError;
 
-	static enum {
+	static enum ExitCode {
 		COMPILE_OK = 0,
 
 		UNRECOGNIZED_TOKEN = 101,
@@ -66,7 +66,7 @@ private:
 
 	typedef void (Compiler::* ParseFunction) (bool CanAssign);
 	
-	typedef struct {
+	typedef struct ParseRule {
 		ParseFunction prefix;
 		ParseFunction infix;
 		Precedence precedence;
@@ -83,6 +83,7 @@ private:
 	void ErrorAtCurrent(int e, std::string msg);
 
 	void synchronize();
+	void SynchronizeBlock();
 
 	// parsing
 	void literal(bool CanAssign);
@@ -112,11 +113,11 @@ private:
 	ParseRule& GetRule(TokenType);
 	void ParsePrecedence(Precedence);
 
-	Token advance();
+	Token& advance();
 	bool match(TokenType type);
 	void consume(TokenType type, std::string ErrorMsg);
-	Token CurrentToken();
-	Token peek(int distance);
+	Token& CurrentToken();
+	Token& peek(int distance);
 
 	// bytecode
 	void EmitByte(uint8_t byte);
@@ -126,10 +127,10 @@ private:
 	void PatchJump(short JumpIndex);
 	void PatchLoop(short LoopStart);
 
-	uint8_t SafeAddConstant(Token Constant);
+	uint8_t SafeAddConstant(Token& Constant);
 	uint8_t SafeAddConstant(Value v);  // for objects that have to be defined as values before insertion
 
-	uint8_t AddLocal(Token identifier);
-	short ResolveLocal(Token identifier);
+	uint8_t AddLocal(Token& identifier);
+	short ResolveLocal(Token& identifier);
 };
 

@@ -195,10 +195,10 @@ std::string StrValue::operator+(StrValue next) {
 }
 
 
-RunnableValue::RunnableValue(struct Chunk *ByteCode, uint8_t arity, std::string& name) {
+RunnableValue::RunnableValue(struct Chunk *ByteCode) {
 	this->ByteCode = ByteCode;
-	this->StrRep = name;
-	this->arity = arity;
+	this->StrRep = "<Script>";
+	this->arity = 0;
 
 	this->type = RUNNABLE_T;
 }

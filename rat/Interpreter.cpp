@@ -638,7 +638,6 @@ void Interpreter::RunCommand() {
 				bool deleted = o->DeleteReference();
 				if (deleted) {
 					RemoveObject(o);
-					delete o;
 					globals[identifier].SetValue(nullptr);
 				}
 			}
@@ -674,7 +673,6 @@ void Interpreter::RunCommand() {
 				bool deleted = v.GetObjectValue()->DeleteReference();
 				if (deleted) {
 					RemoveObject(v.GetObjectValue());
-					delete v.GetObjectValue();
 					v.SetValue(nullptr);
 				}
 			}
@@ -1238,7 +1236,7 @@ std::string Interpreter::TraceStack(int CodeOffset) {
 
 void Interpreter::error(ExitCode e, std::string msg) {
 	int line = CurrentChunk()->CountLines(false);
-	std::string bodyname = "script";
+	std::string bodyname = "<Script>";
 
 	if (body->GetEnclosing()) { // in a runnable
 		RunnableValue* script = body->GetEnclosing();

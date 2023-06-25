@@ -182,6 +182,9 @@ int Chunk::CountLines(bool CompileTime) {
 			case OP_SHIFTL_ASSIGN_GLOBAL:
 			case OP_SHIFTR_ASSIGN_GLOBAL:
 
+			case OP_GET_LOCAL :
+			case OP_SET_LOCAL :
+
 			case OP_INC_LOCAL:
 			case OP_DEC_LOCAL:
 			case OP_ADD_ASSIGN_LOCAL:
@@ -207,7 +210,7 @@ int Chunk::CountLines(bool CompileTime) {
 			}
 			
 			case OP_DEFINE_RUNNABLE: {
-				line += code[op + 2] - 1;
+				line += code[op + 2];
 				op += 3;
 				break;
 			}
@@ -244,6 +247,9 @@ int Chunk::CountLines(std::string& RunnableName) {
 			case OP_BIT_XOR_ASSIGN_GLOBAL:
 			case OP_SHIFTL_ASSIGN_GLOBAL:
 			case OP_SHIFTR_ASSIGN_GLOBAL:
+
+			case OP_GET_LOCAL:
+			case OP_SET_LOCAL:
 
 			case OP_INC_LOCAL:
 			case OP_DEC_LOCAL:

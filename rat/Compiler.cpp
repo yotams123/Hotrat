@@ -57,8 +57,7 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[WHILE] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 	RuleTable[REPEAT] =		{ &Compiler::declaration, nullptr, PREC_ASSIGN };
 
-	std::string bodyname = "script";
-	CurrentBody = new RunnableValue(new Chunk, 0, bodyname);
+	CurrentBody = new RunnableValue(new Chunk);
 }
 
 Compiler::~Compiler() {
@@ -116,6 +115,17 @@ void Compiler::synchronize() {
 	return;
 }
 
+void Compiler::SynchronizeBlock() {
+	// to synchronize after a runnable declaration inside a block (special case)
+	while (!match(TOKEN_EOF) && !match(ENDRUNNABLE)) {
+		if (match(TOKEN_NEWLINE)) EmitByte(OP_NEWLINE);
+		advance();
+	}
+	if (match(ENDRUNNABLE)) advance();
+	return;
+}
+
+
 void Compiler::literal(bool CanAssign) {
 	// Function to handle the 'literal' rule in Hotrat's grammar
 	TokenType type = CurrentToken().GetType();
@@ -163,7 +173,7 @@ uint8_t Compiler::block() {
 				return BREAK_REPEAT;
 
 			case TOKEN_EOF:
-				return UNCLOSED_BLOCK; break;
+				return UNCLOSED_BLOCK;
 
 			case RETURN: {
 				advance();
@@ -176,9 +186,15 @@ uint8_t Compiler::block() {
 				break;
 			}
 
-			case RUNNABLE:	
-				ErrorAtCurrent(BLOCKED_RUNNABLE, "Can't define a runnable inside a block");
-
+			case RUNNABLE:{
+				try {
+					ErrorAtCurrent(BLOCKED_RUNNABLE, "Can't define a runnable inside a block");
+				}
+				catch (int e) {  // Will throw an error, but we want the 'block' function to catch it
+					SynchronizeBlock();
+				}
+				break;
+			}
 			default:
 				try {
 					declaration(true);
@@ -702,7 +718,7 @@ std::vector<std::string> Compiler::ParameterList() {
 }
 
 
-uint8_t Compiler::SafeAddConstant(Token constant){
+uint8_t Compiler::SafeAddConstant(Token& constant){
 	// adding a constant to the chunk, wrapped in a try-catch block
 	uint8_t index;
 	try {
@@ -731,7 +747,7 @@ uint8_t Compiler::SafeAddConstant(Value v) {
 }
 
 
-uint8_t Compiler::AddLocal(Token Identifier) {
+uint8_t Compiler::AddLocal(Token& Identifier) {
 	if (this->CurrentBody->GetLocals().size() >= 255) {
 		ErrorAtPrevious(TABLE_OVERFLOW, "Too many local variables in a runnable");
 	}
@@ -739,7 +755,7 @@ uint8_t Compiler::AddLocal(Token Identifier) {
 	return this->CurrentBody->AddLocal(Identifier.GetLexeme());
 }
 
-short Compiler::ResolveLocal(Token Identifier) {
+short Compiler::ResolveLocal(Token& Identifier) {
 	return this->CurrentBody->ResolveLocal(Identifier.GetLexeme());
 }
 
@@ -782,15 +798,15 @@ void Compiler::ParsePrecedence(Precedence precedence) {
 }
 
 
-Token Compiler::advance() {
+Token& Compiler::advance() {
 	return tokens[CurrentTokenOffset++];
 }
 
-Token Compiler::CurrentToken() {
+Token& Compiler::CurrentToken() {
 	return tokens[CurrentTokenOffset];
 }
 
-Token Compiler::peek(int distance) {
+Token& Compiler::peek(int distance) {
 	return tokens[CurrentTokenOffset + distance];
 }
 
