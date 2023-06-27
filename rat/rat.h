@@ -6,7 +6,7 @@
 #include "Interpreter.h"
 
 
-//#define DEBUG_PRINT_CODE
+#define DEBUG_PRINT_CODE
 
 #ifdef DEBUG_PRINT_CODE 
 #include "Debugger.h"

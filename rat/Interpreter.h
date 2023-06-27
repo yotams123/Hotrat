@@ -8,7 +8,7 @@
 #include "Value.h"
 
 //#define DEBUG_TRACE_STACK
-#define DEBUG_GC_INFO
+//#define DEBUG_GC_INFO
 
 class Interpreter
 {
@@ -65,6 +65,7 @@ private:
 	Value NewObject(ObjectValue* obj);
 	Value NewObject(std::string& str);
 
+	StrValue* ExtractStrValue(Value* v, std::string&&);
 	StrValue* ExtractStrValue(Value* v, std::string&);
 
 	void DefineNative(std::string name, uint8_t arity, NativeRunnable run);

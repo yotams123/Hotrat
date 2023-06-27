@@ -84,6 +84,8 @@ typedef enum {
 	OP_CALL,
 	OP_CALL_NATIVE,
 	OP_RETURN,
+
+	OP_STAM
 } Opcode;
 
 typedef struct Chunk {

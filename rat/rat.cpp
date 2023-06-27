@@ -69,19 +69,14 @@ int Run(std::string& src) {
 
 #ifdef DEBUG_PRINT_CODE
     Debugger *debugger = new Debugger(script->GetChunk(), (std::string)"script");
-    
-    std::thread DbgThread(&Debugger::DisassembleScript, debugger);
+    debugger->DisassembleScript();
+    delete debugger;
 #endif // DEBUG_PRINT_CODE
 
 
     Interpreter *interpreter = new Interpreter(script);
     int code = interpreter->interpret();
     delete interpreter;
-
-#ifdef DEBUG_PRINT_CODE
-    DbgThread.join();
-    delete debugger;
-#endif // DEBUG_PRINT_CODE
 
     return code;
 }

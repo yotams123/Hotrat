@@ -211,7 +211,20 @@ void Interpreter::NativeConvertToNum() {
 			StrValue* s = ExtractStrValue(&v, errormsg);
 
 			try {
-				num = std::stof(s->ToString());
+				std::string strrep = s->ToString();
+
+				try {
+					num = std::stof(strrep);
+				}
+				catch (const std::exception& e) {
+					error(TYPE_ERROR, "String given to '" + globals["Number"].ToString() + "' is too large - can't be represented as a number");
+				}
+
+				std::stringstream s;
+				s << num;
+				std::string numrep = s.str();
+				
+				if (numrep != strrep) error(TYPE_ERROR, "Can't convert string given to '" + globals["Number"].ToString() + "' to a number");
 			}
 			catch (std::invalid_argument e) {
 				error(TYPE_ERROR, "Argument to " + globals["Number"].ToString() + " must be representable as a number");
@@ -774,13 +787,11 @@ void Interpreter::RunCommand() {
 		case OP_ADD_ASSIGN_LOCAL: {
 			switch (peek(0).GetType()) {
 				case Value::OBJECT_T: {
-
-					std::string msg = "Can only perform this operation on two numbers or two strings";
 					Value v = peek(0); // don't want to remove reference yet
-					StrValue* b = ExtractStrValue(&v, msg);
+					StrValue* b = ExtractStrValue(&v, "Can only perform this operation on two numbers or two strings");
 
 					Value* va = FindLocal();
-					StrValue* a = ExtractStrValue(va, msg);
+					StrValue* a = ExtractStrValue(va, "Can only perform this operation on two numbers or two strings");
 
 					a->SetValue((std::string&)(*a + *b)); // no need to change references to a,
 					//the ObjectValue is the same
@@ -1069,6 +1080,13 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
+		case OP_STAM: {
+			float a = 567.43;
+			float b = 1234543.8;
+
+			std::cout << a, b, a + b;
+		}
+
 		default:
 			error(UNRECOGNIZED_OPCODE, "Unrecognized opcode " + opcode);
 			break;
@@ -1160,9 +1178,19 @@ Value& Interpreter::peek(int depth) {
 
 
 
-
-
 StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
+	// Return the StrValue that v holds, if it does.
+	// If v is not a StrValue, raise an error
+
+	if (v->GetType() != Value::OBJECT_T) error(TYPE_ERROR, ErrorMsg);
+
+	ObjectValue* o = v->GetObjectValue();
+
+	if (o->GetType() != ObjectValue::STRING_T) error(TYPE_ERROR, ErrorMsg);
+	return (StrValue*)o;
+}
+
+StrValue* Interpreter::ExtractStrValue(Value* v, std::string&& ErrorMsg) {
 	// Return the StrValue that v holds, if it does.
 	// If v is not a StrValue, raise an error
 
