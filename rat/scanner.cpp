@@ -196,7 +196,11 @@ Token Scanner::ScanToken() {
 			else return Token(SLASH, "/");
 		}
 		
-		case '"': return String();
+		case '\'':
+			return String('\'');
+		case '"': 
+			return String('"');
+		
 		case '#': return Comment();
 		case ':': return Token(COLON, ":");
 	}
@@ -240,11 +244,11 @@ Token Scanner::Number() {
 	return Token(NUM_LITERAL, src.substr(start, current - start));
 }
 
-Token Scanner::String() {
+Token Scanner::String(char quote_type) {
 	// Lexes a string literal and returns an appropriate token
 
 	int newline_toks = 0;  // number of newlines in the string
-	while (peek(0) != '"' && !IsAtEnd()) { 
+	while (peek(0) != quote_type && !IsAtEnd()) { 
 		if (peek(0) == '\n') {
 			newline_toks++;
 			line++;
@@ -254,9 +258,11 @@ Token Scanner::String() {
 
 
 	if (IsAtEnd()) {
-		error("Unclosed string");
-		tokens.push_back(Token(TOKEN_EOF, ""));
+		line -= newline_toks;
+		error("Unclosed string", quote_type);
+		return Token(TOKEN_EOF, "");
 	}
+
 	advance(); // get rid of closing ""
 
 	Token str = Token(STRING_LITERAL, src.substr(start + 1, current - start - 2));
@@ -337,8 +343,11 @@ bool Scanner::IsAtEnd() {
 	return current >= src.length();
 }
 
-
 void Scanner::error(std::string ErrorMsg) {
-	std::cerr << "[Error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
+	this->error(ErrorMsg, peek(-1));
+}
+
+void Scanner::error(std::string ErrorMsg, char violator) {
+	std::cerr << "[Error in line " << line << " at '" << violator << "']: " << ErrorMsg << std::endl;
 	HadError = true;
 }

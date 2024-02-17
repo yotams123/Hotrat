@@ -508,6 +508,15 @@ void Interpreter::RunCommand() {
 			break;
 		}
 
+		case OP_XOR: {
+			bool b = pop().IsTruthy();
+			bool a = pop().IsTruthy();
+
+			Value v = NewValue(a != b);
+			push(v);
+			break;
+		}
+
 		case OP_ADD: {
 			switch (peek(0).GetType()) {
 				case Value::NUM_T:	BINARY_NUM_OP(+);	break;
@@ -1075,13 +1084,6 @@ void Interpreter::RunCommand() {
 			if (this->body == nullptr) error(RETURN_FROM_SCRIPT, "Can't return from the global script");
 
 			break;
-		}
-
-		case OP_STAM: {
-			float a = 567.43;
-			float b = 1234543.8;
-
-			std::cout << a, b, a + b;
 		}
 
 		default:

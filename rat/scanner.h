@@ -38,10 +38,11 @@ private:
 	void SkipWhiteSpace();
 	bool CheckWord(std::string word);
 
-	Token String();
+	Token String(char quote_type);
 	Token Number();
 	Token Identifier();
 	Token Comment();
 
 	void error(std::string ErrorMsg);
+	void error(std::string ErrorMsg, char violator);
 };

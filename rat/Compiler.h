@@ -14,6 +14,7 @@ typedef enum Precedence{
 	PREC_ASSIGN,
 	PREC_AND,
 	PREC_OR,
+	PREC_XOR,
 	PREC_COMPARE,
 	PREC_TERM,
 	PREC_FACTOR,

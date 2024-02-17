@@ -18,8 +18,9 @@ Compiler::Compiler(std::vector<Token>& tokens) {
 	RuleTable[FALSE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 	RuleTable[NONE] =	{ &Compiler::literal, nullptr, PREC_LITERAL };
 
-	RuleTable[AND] =	{ nullptr, &Compiler::binary, PREC_AND };
-	RuleTable[OR] =		{ nullptr, &Compiler::binary, PREC_OR };
+	RuleTable[AND] =	{ nullptr, &Compiler::binary, PREC_AND	};
+	RuleTable[OR] =		{ nullptr, &Compiler::binary, PREC_OR	};
+	RuleTable[XOR] =	{ nullptr, &Compiler::binary, PREC_XOR	};
 
 	RuleTable[PLUS] =	{ nullptr,			&Compiler::binary, PREC_TERM };
 	RuleTable[MINUS] =	{ &Compiler::unary, &Compiler::binary, PREC_TERM };
@@ -439,6 +440,7 @@ void Compiler::binary(bool CanAssign) {
 		case GREATER_EQUAL:	EmitBytes(OP_LESS, OP_NOT);		break;
 		case LESS:			EmitByte(OP_LESS);				break;
 		case LESS_EQUAL:	EmitBytes(OP_GREATER, OP_NOT);	break;
+		case XOR:			EmitByte(OP_XOR);				break;
 
 		case AND:
 		case OR: {
