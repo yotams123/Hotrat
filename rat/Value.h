@@ -87,10 +87,10 @@ public:
 
 class StrValue : public ObjectValue {
 public:
-	StrValue(std::string& value);
+	StrValue(const std::string& value);
 
 	std::string& GetValue();
-	void SetValue(std::string& s);
+	void SetValue(const std::string& s);
 
 	std::string operator+(StrValue next);
 };
@@ -110,7 +110,7 @@ protected:
 
 public:
 	RunnableValue(struct Chunk *ByteCode); // for initializing the script
-	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name);	// for use during compile time
+	RunnableValue(RunnableValue* enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, const std::string& name);	// for use during compile time
 	RunnableValue(RunnableValue* ToCopy, Chunk *chunk, RunnableValue *enclosing, uint8_t FrameStart);	// for use during the runtime
 	~RunnableValue();
 
@@ -136,7 +136,7 @@ private:
 	NativeRunnable runnable;
 
 public:
-	NativeValue(std::string& name, uint8_t arity, NativeRunnable value);
+	NativeValue(const std::string& name, uint8_t arity, NativeRunnable value);
 	~NativeValue();
 
 	NativeRunnable GetRunnable();

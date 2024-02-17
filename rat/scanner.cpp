@@ -195,7 +195,7 @@ Token Scanner::ScanToken() {
 			}
 			else return Token(SLASH, "/");
 		}
-
+		
 		case '"': return String();
 		case '#': return Comment();
 		case ':': return Token(COLON, ":");
@@ -309,7 +309,7 @@ char Scanner::advance() {
 	return src[current++];
 }
 
-char Scanner::peek(size_t distance) {
+char Scanner::peek(int distance) {
 	return src[current + distance];
 }
 
@@ -339,6 +339,6 @@ bool Scanner::IsAtEnd() {
 
 
 void Scanner::error(std::string ErrorMsg) {
-	std::cerr << "[Lexer error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
+	std::cerr << "[Error in line " << line << " at '" << peek(-1) << "']: " << ErrorMsg << std::endl;
 	HadError = true;
 }

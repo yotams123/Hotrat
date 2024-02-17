@@ -53,11 +53,11 @@ private:
 	bool GetConstantBool(uint8_t index);
 
 	std::string TraceStack(int CodeOffset);
-	void error(ExitCode e, std::string msg);
+	void error(ExitCode e, const std::string& msg);
 
 	std::unordered_map<std::string, Value> globals;
-	void AddGlobal(std::string&, Value);
-	bool IsDefinedGlobal(std::string& identifier);
+	void AddGlobal(const std::string&, Value);
+	bool IsDefinedGlobal(const std::string& identifier);
 	
 	Value *FindGlobal();
 	Value *FindLocal();
@@ -65,10 +65,9 @@ private:
 	Value NewObject(ObjectValue* obj);
 	Value NewObject(std::string& str);
 
-	StrValue* ExtractStrValue(Value* v, std::string&&);
-	StrValue* ExtractStrValue(Value* v, std::string&);
+	StrValue* ExtractStrValue(Value* v, const std::string&);
 
-	void DefineNative(std::string name, uint8_t arity, NativeRunnable run);
+	void DefineNative(const std::string& name, uint8_t arity, NativeRunnable run);
 
 	void NativeInput();
 	void NativePrint();

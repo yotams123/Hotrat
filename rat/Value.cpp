@@ -177,7 +177,7 @@ bool ObjectValue::DeleteReference() {
 }
 
 
-StrValue::StrValue(std::string& value) {
+StrValue::StrValue(const std::string& value) {
 	this->type = STRING_T;
 	this->StrRep = value;
 }
@@ -186,7 +186,7 @@ std::string& StrValue::GetValue() {
 	return this->StrRep;
 }
 
-void StrValue::SetValue(std::string& s) {
+void StrValue::SetValue(const std::string& s) {
 	this->StrRep = s;
 }
 
@@ -203,7 +203,7 @@ RunnableValue::RunnableValue(struct Chunk *ByteCode) {
 	this->type = RUNNABLE_T;
 }
 
-RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, std::string& name) {
+RunnableValue::RunnableValue(RunnableValue *enclosing, struct Chunk *ByteCode, std::vector<std::string>& args, const std::string& name) {
 	// Constructor for use during compile-time. Bytecode, args and name are all known at compile time.
 	
 	this->ByteCode = ByteCode;
@@ -290,7 +290,7 @@ short RunnableValue::ResolveLocal(std::string Identifier) {
 }
 
 
-NativeValue::NativeValue(std::string& name, uint8_t arity, NativeRunnable runnable) {
+NativeValue::NativeValue(const std::string& name, uint8_t arity, NativeRunnable runnable) {
 	this->type = NATIVE_T;
 	this->arity = arity;
 	this->runnable = runnable;

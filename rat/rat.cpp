@@ -30,7 +30,7 @@ void RunScript(char *filename) {
     int code = 0;
 
     if (!Script.is_open()) {
-        std::cerr << "There was an error opening the file => quitting\n";
+        std::cerr << "[Error: File not found - '" +  std::string(filename) + "']\n";
         return;
     }
     

@@ -66,8 +66,7 @@ void Interpreter::NativeInput() {
 	// Code for native runnable, to get input as string
 
 	Value PreInput = peek(0);
-	std::string errormsg = "Argument to 'input' must be a string";
-	StrValue * s = ExtractStrValue(&PreInput, errormsg);
+	StrValue * s = ExtractStrValue(&PreInput, "Argument to 'input' must be a string");
 	
 	std::cout << s->GetValue();
 	std::string str;
@@ -94,8 +93,7 @@ void Interpreter::NativeReadFromFile() {
 
 	Value v = peek(0);  // Keep value in stack so it still has at least one reference
 
-	std::string msg = "Argument to 'ReadFromFile' must be a valid path string";
-	std::string FileName = ExtractStrValue(&v, msg)->ToString();
+	std::string FileName = ExtractStrValue(&v, "Argument to 'ReadFromFile' must be a valid path string")->ToString();
 	LPCSTR filename = FileName.c_str();
 
 	HANDLE handle = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -171,9 +169,7 @@ void Interpreter::NativeEmptyFile() {
 
 	Value FileValue = peek(0);  // Keep value in stack so it still has at least one reference
 
-	std::string msg = "EmptyFile's argument must be a string value";
-
-	StrValue * filestr = ExtractStrValue(&FileValue, msg);
+	StrValue * filestr = ExtractStrValue(&FileValue, "EmptyFile's argument must be a string value");
 	std::string filename = filestr->GetValue();
 
 	DWORD attribute = GetFileAttributesA(filename.c_str());
@@ -207,8 +203,7 @@ void Interpreter::NativeConvertToNum() {
 		case Value::NONE_T:	 num = 0;   break;
 
 		default: {
-			std::string errormsg = "Value given to 'Number()' must be of valid type";
-			StrValue* s = ExtractStrValue(&v, errormsg);
+			StrValue* s = ExtractStrValue(&v, "Value given to 'Number()' must be of valid type");
 
 			try {
 				std::string strrep = s->ToString();
@@ -291,7 +286,7 @@ void Interpreter::NativeTypeOf() {
 }
 
 
-void Interpreter::DefineNative(std::string name, uint8_t arity, NativeRunnable run) {
+void Interpreter::DefineNative(const std::string& name, uint8_t arity, NativeRunnable run) {
 	AddGlobal(name, NewObject(new NativeValue(name, arity, run)));
 }
 
@@ -788,10 +783,12 @@ void Interpreter::RunCommand() {
 			switch (peek(0).GetType()) {
 				case Value::OBJECT_T: {
 					Value v = peek(0); // don't want to remove reference yet
-					StrValue* b = ExtractStrValue(&v, "Can only perform this operation on two numbers or two strings");
+
+					std::string msg = "Can only perform this operation on two numbers or two strings";
+					StrValue* b = ExtractStrValue(&v, msg);
 
 					Value* va = FindLocal();
-					StrValue* a = ExtractStrValue(va, "Can only perform this operation on two numbers or two strings");
+					StrValue* a = ExtractStrValue(va, msg);
 
 					a->SetValue((std::string&)(*a + *b)); // no need to change references to a,
 					//the ObjectValue is the same
@@ -1178,7 +1175,7 @@ Value& Interpreter::peek(int depth) {
 
 
 
-StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
+StrValue* Interpreter::ExtractStrValue(Value* v, const std::string& ErrorMsg) {
 	// Return the StrValue that v holds, if it does.
 	// If v is not a StrValue, raise an error
 
@@ -1189,19 +1186,6 @@ StrValue* Interpreter::ExtractStrValue(Value* v, std::string& ErrorMsg) {
 	if (o->GetType() != ObjectValue::STRING_T) error(TYPE_ERROR, ErrorMsg);
 	return (StrValue*)o;
 }
-
-StrValue* Interpreter::ExtractStrValue(Value* v, std::string&& ErrorMsg) {
-	// Return the StrValue that v holds, if it does.
-	// If v is not a StrValue, raise an error
-
-	if (v->GetType() != Value::OBJECT_T) error(TYPE_ERROR, ErrorMsg);
-
-	ObjectValue* o = v->GetObjectValue();
-
-	if (o->GetType() != ObjectValue::STRING_T) error(TYPE_ERROR, ErrorMsg);
-	return (StrValue*)o;
-}
-
 
 
 std::string Interpreter::GetConstantStr(uint8_t index) {
@@ -1239,14 +1223,14 @@ Value *Interpreter::FindGlobal() {
 	error(UNDEFINED_RAT, "Undefined rat '" + identifier + "' ");
 }
 
-void Interpreter::AddGlobal(std::string& name, Value value) {
+void Interpreter::AddGlobal(const std::string& name, Value value) {
 	this->globals.insert({ name, value });
 	if (value.IsObject()) {
 		value.GetObjectValue()->AddReference();
 	}
 }
 
-bool Interpreter::IsDefinedGlobal(std::string& identifier ) {
+bool Interpreter::IsDefinedGlobal(const std::string& identifier ) {
 	return this->globals.find(identifier) != this->globals.end();
 }
 
@@ -1262,7 +1246,7 @@ std::string Interpreter::TraceStack(int CodeOffset) {
 	return (std::to_string(CodeOffset) + "\t" + trace);
 }
 
-void Interpreter::error(ExitCode e, std::string msg) {
+void Interpreter::error(ExitCode e, const std::string& msg) {
 	int line = CurrentChunk()->CountLines(false);
 	std::string bodyname = "<Script>";
 
